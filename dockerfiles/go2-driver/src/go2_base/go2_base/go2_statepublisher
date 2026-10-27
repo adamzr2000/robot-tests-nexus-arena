@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# Software License Agreement (BSD)
+#
+# @author    Salman Omar Sohail <support@mybotshop.de>
+# @copyright (c) 2024, MYBOTSHOP GmbH, Inc., All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# * Redistributions of source code must retain the above copyright notice,
+#   this list of conditions and the following disclaimer.
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+# * Neither the name of MYBOTSHOP GmbH nor the names of its contributors
+#   may be used to endorse or promote products derived from this software
+#   without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, is not permitted without the express permission
+# of MYBOTSHOP GmbH.
+
+import time
+import rclpy
+import numpy as np
+
+from rclpy.node import Node
+from go2_base.utils.transforms import *
+from tf2_ros import TransformBroadcaster
+from math import sqrt, atan2, sin, cos, pi
+
+from nav_msgs.msg import Odometry
+from unitree_go.msg import SportModeState
+from sensor_msgs.msg import JointState, Imu
+from geometry_msgs.msg import Quaternion, Vector3, TransformStamped
+
+class Go2StateController(Node):
+    def __init__(self):
+        super().__init__('go2_statepublisher')
+        self.get_logger().info(f'{self.colorize("Initializing GO2 State Publisher","yellow")}')
+
+        # Parameters
+        self.declare_parameters(namespace='', parameters=[('robot_odom_pub',True),
+                                                          ('robot_odom_tf','odom'),
+                                                          ('robot_baselink_tf','base_link')])
+        
+        self.param_robot_odom_pub = self.get_parameter('robot_odom_pub').value
+        self.param_robot_odom_tf = self.get_parameter('robot_odom_tf').value
+        self.param_robot_baselink_tf = self.get_parameter('robot_baselink_tf').value
+
+        # Body dimensions
+        self.bodyLength = 0.3762
+        self.bodyWidth  = 0.0935
+
+        # Leg dimensions
+        self.l1 = 0
+        self.l2 = 0.080 # hip
+        self.l3 = 0.213 # thigh
+        self.l4 = 0.213 # calf   
+
+        # URDF
+        self.robot_odom_tf     = self.param_robot_odom_tf
+        self.robot_baselink_tf = self.param_robot_baselink_tf
+
+        # Flags
+        self.orientation_eu = 0 
+        self.camera_data    = 0 
+        self.foot_position  = 0
+        self.foot_position_flag = False 
+        self.imu_state = None 
+        self.odom_state = None 
+        self.camera_state = None 
+
+        # Subscribers
+        self.subscriber_state_contacts = self.create_subscription(SportModeState, '/sportmodestate', self.callback_state_contacts, 10)
+        self.subscriber_lidar_odom     = self.create_subscription(Odometry, '/utlidar/robot_odom', self.callback_lidar_odom, 10)
+
+        # Publishers
+        self.publisher_odom = self.create_publisher(Odometry, 'base/odom', 10)
+        self.pub_data_odom = Odometry()
+
+        self.publisher_odom_tf = TransformBroadcaster(self)
+        self.pub_data_odom_tf = TransformStamped()
+
+        self.publisher_imu = self.create_publisher(Imu, 'sensor/imu/data', 10)
+        self.pub_data_imu = Imu()
+
+        self.publisher_jointstate = self.create_publisher(JointState, '/joint_states', 10)
+        self.pub_data_jointstate = JointState()   
+
+        # Track Startup
+        self.startup_time = time.time()
+        self.startup_wait = 3.0
+
+    def colorize(self, text, color):
+        color_codes = {
+            'green': '\033[92m',
+            'yellow': '\033[93m',
+            'orange': '\033[38;5;208m', 
+            'blue': '\033[94m',
+            'red': '\033[91m'
+        }
+        return color_codes[color] + text + '\033[0m'
+
+    def callback_state_contacts(self, data):
+        self.imu_state = data.imu_state
+        self.robot_height = data.body_height
+        self.foot_position = data.foot_position_body
+        self.foot_position_flag = True
+    
+    def callback_lidar_odom(self, data):
+        self.odom_state = data
+
+    def update_odom(self):
+        if self.odom_state is not None:
+            self.pub_data_odom.header.stamp = self.get_clock().now().to_msg()
+            self.pub_data_odom.header.frame_id = self.robot_odom_tf
+            self.pub_data_odom.child_frame_id = self.robot_baselink_tf  
+            self.pub_data_odom.pose.pose.position.x = self.odom_state.pose.pose.position.x 
+            self.pub_data_odom.pose.pose.position.y = self.odom_state.pose.pose.position.y  
+            self.pub_data_odom.pose.pose.position.z = self.odom_state.pose.pose.position.z 
+            self.pub_data_odom.pose.pose.orientation = self.odom_state.pose.pose.orientation
+            self.pub_data_odom.twist  = self.odom_state.twist
+            self.publisher_odom.publish(self.pub_data_odom)
+
+            self.pub_data_odom_tf.header.frame_id = self.robot_odom_tf
+            self.pub_data_odom_tf.child_frame_id = self.robot_baselink_tf
+            self.pub_data_odom_tf.header.stamp = self.get_clock().now().to_msg()
+            self.pub_data_odom_tf.transform.translation.x = self.pub_data_odom.pose.pose.position.x
+            self.pub_data_odom_tf.transform.translation.y = self.pub_data_odom.pose.pose.position.y
+            self.pub_data_odom_tf.transform.translation.z = self.pub_data_odom.pose.pose.position.z
+            self.pub_data_odom_tf.transform.rotation = self.pub_data_odom.pose.pose.orientation
+            if self.param_robot_odom_pub:
+                self.publisher_odom_tf.sendTransform(self.pub_data_odom_tf)
+            self.get_logger().info(f'{self.colorize("GO2 Odom Data Received","green")}', once=True)
+        else:
+            if time.time() - self.startup_time > self.startup_wait:
+                self.get_logger().error(f'{self.colorize("No GO2 Odom Data Received","orange")}', throttle_duration_sec=5)
+
+    def update_imu(self):
+        if self.imu_state is not None:
+            self.pub_data_imu.orientation =  Quaternion(x=float(self.imu_state.quaternion[0]),
+                                                        y=float(self.imu_state.quaternion[1]),
+                                                        z=float(self.imu_state.quaternion[2]),
+                                                        w=float(self.imu_state.quaternion[3]))
+            self.pub_data_imu.angular_velocity = Vector3(
+                x=float(self.imu_state.gyroscope[0]),
+                y=float(self.imu_state.gyroscope[1]),
+                z=float(self.imu_state.gyroscope[2])
+            )
+            self.pub_data_imu.linear_acceleration = Vector3(
+                x=float(self.imu_state.accelerometer[0]),
+                y=float(self.imu_state.accelerometer[1]),
+                z=float(self.imu_state.accelerometer[2])
+            )
+            self.publisher_imu.publish(self.pub_data_imu)
+            self.get_logger().info(f'{self.colorize("GO2 IMU Data Received","green")}', once=True)
+        else:
+            if time.time() - self.startup_time > self.startup_wait:
+                self.get_logger().error(f'{self.colorize("No GO2 IMU Data Received","orange")}', throttle_duration_sec=5)
+
+    def update_joint_states(self):
+        
+        self.pub_data_jointstate.header.stamp = self.get_clock().now().to_msg()
+        self.pub_data_jointstate.header.frame_id = 'trunk'
+        self.pub_data_jointstate.name = ['FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
+                                          'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
+                                          'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
+                                          'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint']        
+        self.pub_data_jointstate.effort = [0.0]*12
+
+        if self.foot_position_flag == False:
+            if time.time() - self.startup_time > self.startup_wait:
+                self.get_logger().error(f'{self.colorize("No GO2 foot positions Data Received","orange")}', throttle_duration_sec=5)
+            self.pub_data_jointstate.position = [0.0]*12
+            return
+        else:
+            self.inverse_kinematics()     
+            self.get_logger().info(f'{self.colorize("GO2 foot positions Data Received","green")}', once=True)
+        self.publisher_jointstate.publish(self.pub_data_jointstate)      
+
+    def inverse_kinematics(self):
+        """
+        Compute the inverse kinematics for all the legs.
+        """
+        position_FR = self.foot_position[0], self.foot_position[1], self.foot_position[2]
+        position_FL = self.foot_position[3], self.foot_position[4], self.foot_position[5]
+        position_RR = self.foot_position[6], self.foot_position[7], self.foot_position[8]
+        position_RL = self.foot_position[9], self.foot_position[10], self.foot_position[11]
+
+        self.pub_data_jointstate.position = self.joint_angle_calculation([position_FR,position_FL,position_RR,position_RL])
+
+    def joint_angle_calculation(self, pose):
+        
+        try:
+            FR,FL,RR,RL = pose[0],pose[1],pose[2],pose[3]
+            positions = self.get_local_positions(FR,FL,RR,RL)
+            angles = []
+
+            for i in range(4):
+                x = positions[i][0]
+                y = positions[i][1]
+                z = positions[i][2]
+
+                F = sqrt(x**2 + y**2 - self.l2**2)
+                G = F - self.l1
+                H = sqrt(G**2 + z**2)
+
+                theta1 = -atan2(y,x) - atan2(F,self.l2 * (-1)**i)
+                D = (H**2 - self.l3**2 - self.l4**2)/(2*self.l3*self.l4)
+                theta4 = -atan2((sqrt(1-D**2)),D)
+                theta3 = atan2(z,G) - atan2(self.l4*sin(theta4),
+                                            self.l3 + self.l4*cos(theta4))
+            
+                angles.append(theta1)
+                angles.append(theta3)
+                angles.append(theta4)
+
+            return angles
+        
+        except ValueError:
+            self.get_logger().error('No Joint Angle Data Received.', throttle_duration_sec=5)
+            angles.append(0.0)
+            angles.append(0.0)
+            angles.append(0.0)
+            return angles 
+
+    def get_local_positions(self,FR,FL,RR,RL,
+                            dx=0,dy=0,dz=0,roll=0,pitch=0,yaw=0):
+        """
+        Compute the positions of the end points in the shoulder frames.
+        """
+        FR,FL,RR,RL = np.array(FR),np.array(FL),np.array(RR),np.array(RL)
+
+        FR = np.vstack((column_vector(FR), np.array([1])))
+        FL = np.vstack((column_vector(FL), np.array([1])))
+        RR = np.vstack((column_vector(RR), np.array([1])))
+        RL = np.vstack((column_vector(RL), np.array([1])))
+
+        # Transformation matrix, base_link_world => base_link
+        T_blwbl = homog_transform(dx,dy,dz,roll,pitch,yaw)
+
+        # Transformation matrix, base_link_world => FR1
+        T_blwFR1 = np.dot(T_blwbl, homog_transform(+0.5*self.bodyLength,
+                        -0.5*self.bodyWidth,0,pi/2,-pi/2,0))
+
+        # Transformation matrix, base_link_world => FL1
+        T_blwFL1 = np.dot(T_blwbl, homog_transform(+0.5*self.bodyLength,
+                        +0.5*self.bodyWidth,0,pi/2,-pi/2,0))
+
+        # Transformation matrix, base_link_world => RR1
+        T_blwRR1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength,
+                        -0.5*self.bodyWidth,0,pi/2,-pi/2,0))
+
+        # Transformation matrix, base_link_world => RL1
+        T_blwRL1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength,
+                        +0.5*self.bodyWidth,0,pi/2,-pi/2,0))
+
+        # Local coordinates
+        pos_FR = np.dot(homog_transform_inverse(T_blwFR1),FR)
+        pos_FL = np.dot(homog_transform_inverse(T_blwFL1),FL)
+        pos_RR = np.dot(homog_transform_inverse(T_blwRR1),RR)
+        pos_RL = np.dot(homog_transform_inverse(T_blwRL1),RL)
+
+        return(np.array([pos_FR[:3],pos_FL[:3],pos_RR[:3],pos_RL[:3]]))      
+
+    def destroy_node(self):
+        self.get_logger().info(f'{self.colorize("GO2 State Publisher is shutting down","red")}')
+        super().destroy_node() 
+
+def main(args=None):
+
+    rclpy.init(args=args)
+    rk = Go2StateController()
+
+    try:
+        while rclpy.ok():
+            rk.update_joint_states()
+            rk.update_imu()
+            rk.update_odom()
+            rclpy.spin_once(rk)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        rk.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# Software License Agreement (BSD)
+# (Your license block remains here...)
+
+import gi
+gi.require_version('Gst', '1.0')
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import rclpy
+import numpy as np
+import cv2
+
+from gi.repository import Gst
+from cv_bridge import CvBridge
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import Image
+from unitree_go.msg import SportModeState
+
+STATS_PORT = 6003
+
+class Go2Camera(Node):
+    def __init__(self):
+        super().__init__('go2_camerapublisher')
+
+        # URDF
+        self.robot_camera_link = 'base_link'
+
+        # Parameters
+        self.declare_parameters(namespace='', parameters=[
+            ('lan_port', ''),
+            ('image_width', 1280),
+            ('image_height', 720),
+            ('publish_width', 0),
+            ('publish_height', 0),
+        ])
+        self.param_lan_port = self.get_parameter('lan_port').value
+        self.param_width = self.get_parameter('image_width').value
+        self.param_height = self.get_parameter('image_height').value
+        # 0/0 (default) = publish at the captured resolution above, unchanged.
+        # Independent of image_width/image_height, which still must match the
+        # camera's actual native stream for capture itself to work.
+        self.param_publish_width = self.get_parameter('publish_width').value
+        self.param_publish_height = self.get_parameter('publish_height').value
+
+        # Publishers & Tools
+        self.publisher_camera = self.create_publisher(Image, 'sensor/camera', qos_profile_sensor_data)
+        self.bridge = CvBridge() # Initialize CvBridge once here
+
+        # Frame counter, exposed via a plain HTTP endpoint (not a ROS topic/service)
+        # so it can be polled from outside this DDS domain's discovery graph --
+        # avoids depending on this participant's unicast peer list, which in
+        # --peer/remote mode only points at the edge, not at other robot-local nodes.
+        self.frames_published = 0
+        self._stats_lock = threading.Lock()
+        self._stats_server = None
+        self._start_stats_server()
+
+        # Subscriptions
+        self.create_subscription(SportModeState, '/sportmodestate', self.callback_video, 1)
+
+        # Camera Capture
+        Gst.init(None) # GStreamer pipeline string
+        gstreamer_str = f"udpsrc address=230.1.1.1 port=1720 multicast-iface={self.param_lan_port} ! application/x-rtp, media=video, encoding-name=H264 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! video/x-raw,width={self.param_width},height={self.param_height},format=BGR ! appsink drop=1"
+        self.pipeline = Gst.parse_launch(gstreamer_str) # Create GStreamer pipeline
+        self.appsink = self.pipeline.get_by_name("appsink0") # Create an AppSink to get video frames
+        self.appsink.set_property("emit-signals", True)
+        self.appsink.set_property("max-buffers", 1)
+        self.appsink.connect("new-sample", self.callback_camera) # Connect the callback function to the "new-sample" signal
+        self.pipeline.set_state(Gst.State.PLAYING) # Start the GStreamer pipeline
+
+    def _start_stats_server(self):
+        node = self
+
+        class _StatsHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == "/stats":
+                    with node._stats_lock:
+                        count = node.frames_published
+                    body = json.dumps({"frames_published": count}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+
+            def log_message(self, *args):
+                pass  # silence default per-request access log to stderr
+
+        # Best-effort: the stats endpoint is auxiliary and must never block or
+        # crash camera publishing if the port is unavailable for any reason.
+        try:
+            self._stats_server = ThreadingHTTPServer(("0.0.0.0", STATS_PORT), _StatsHandler)
+            threading.Thread(target=self._stats_server.serve_forever, daemon=True).start()
+            self.get_logger().info(f"Stats endpoint listening on :{STATS_PORT}/stats")
+        except OSError as e:
+            self.get_logger().warning(f"Could not start stats endpoint on :{STATS_PORT}: {e}")
+            self._stats_server = None
+
+    def colorize(self, text, color):
+        color_codes = {
+            'green': '\033[92m',
+            'yellow': '\033[93m',
+            'orange': '\033[38;5;208m', 
+            'blue': '\033[94m',
+            'red': '\033[91m'
+        }
+        return color_codes[color] + text + '\033[0m'
+
+    def callback_video(self, data):
+        pass
+
+    def callback_camera(self, sink):
+        sample = sink.emit("pull-sample")
+        buffer = sample.get_buffer()
+        success, map_info = buffer.map(Gst.MapFlags.READ)
+        
+        if success:
+            # 1. Create a numpy array that "points" to the memory (no copying)
+            frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((self.param_height, self.param_width, 3))
+
+            # 1b. Optional resize before publish, independent of capture resolution
+            # above (off by default -- see publish_width/publish_height in go2_base.yaml).
+            if self.param_publish_width and self.param_publish_height:
+                frame = cv2.resize(frame, (self.param_publish_width, self.param_publish_height))
+
+            # 2. Convert to ROS message immediately using the reused CvBridge instance
+            msg = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8")
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = self.robot_camera_link
+            
+            # 3. Publish right here
+            self.publisher_camera.publish(msg)
+
+            with self._stats_lock:
+                self.frames_published += 1
+
+            # Log success once
+            self.get_logger().info(f'{self.colorize("GO2 Camera Data Received","green")}', once=True)
+            
+            buffer.unmap(map_info)
+        else:
+            self.get_logger().error(f'{self.colorize("Camera Error: Failed to map buffer","red")}', throttle_duration_sec=5)
+            return Gst.FlowReturn.ERROR
+            
+        return Gst.FlowReturn.OK
+ 
+    def destroy_node(self):
+        self.get_logger().info(f'{self.colorize("GO2 Camera Publisher is shutting down","red")}')
+        if hasattr(self, 'pipeline') and self.pipeline is not None:
+            self.pipeline.set_state(Gst.State.NULL)
+        if getattr(self, '_stats_server', None) is not None:
+            self._stats_server.shutdown()
+
+        super().destroy_node()
+        
+def main(args=None):
+    rclpy.init(args=args)
+    robot = Go2Camera()
+
+    try:
+        rclpy.spin(robot)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        robot.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

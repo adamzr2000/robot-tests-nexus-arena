@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find go2_description)/xacro/open_manipulator/open_manipulator_robot.urdf.xacro" />
+
+  <!-- Open Manipulator Add on -->
+  <link name="front_top_mount" />
+
+  <joint name="front_top_mount_joint" type="fixed">
+    <parent link="utlidar_lidar" />
+    <child link="front_top_mount" />
+    <origin xyz="0.15 0.0 -0.15" rpy="3.14 0 3.14"/>
+  </joint>
+
+  <!-- Open Manipulator Bracket -->
+  <link name="open_manipulator_bracket">
+    <visual>
+      <geometry>
+        <mesh filename="package://go2_description/meshes/3d_brackets/open_manipulator_combined_fixture.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://go2_description/meshes/3d_brackets/open_manipulator_combined_fixture.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="open_manipulator_bracket_joint" type="fixed">
+    <parent link="front_top_mount"/>
+    <child link="open_manipulator_bracket"/>
+    <origin xyz="0.062 0 0.021" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="open_manipulator_joint" type="fixed">
+    <parent link="front_top_mount" />
+    <child link="link1" />
+    <origin xyz="0.0025 0 0.01" rpy="0 0 0" />
+  </joint>
+
+   <!-- Open Manipulator Base Bracket -->
+  <link name="open_manipulator_base_bracket">
+    <visual>
+      <geometry>
+        <mesh filename="package://go2_description/meshes/3d_brackets/GO2_Openmanipulator_Base.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="dark_gray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://go2_description/meshes/3d_brackets/GO2_Openmanipulator_Base.stl" scale="1 1 1"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="open_manipulator_base_bracket_joint" type="fixed">
+    <parent link="front_top_mount"/>
+    <child link="open_manipulator_base_bracket"/>
+    <origin xyz="0.032 0.0 0.007" rpy="0 0 1.5708"/>
+  </joint>
+
+</robot>

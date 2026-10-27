@@ -1,0 +1,5 @@
+# go2_srvs/srv/Go2Modes.srv
+string request_data
+---
+bool success
+string reason

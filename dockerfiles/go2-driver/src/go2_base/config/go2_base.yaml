@@ -1,0 +1,36 @@
+go2:
+  go2_statepublisher:
+    ros__parameters:
+      robot_odom_pub: True
+      robot_odom_tf: 'odom'
+      robot_baselink_tf: 'base_link'
+
+  go2_camerapublisher:
+    ros__parameters:
+      lan_port: 'wlp6s0'
+      image_width: 1280
+      image_height: 720
+      # 0 = disabled (default): published image keeps the captured resolution
+      # above unchanged. Set both to resize before publishing — e.g. for a
+      # transport-only experiment holding payload size constant across
+      # architectures. Off by default: shrinking the published image changes
+      # what the main vAccel-vs-ROS2 payload-size comparison is measuring.
+      publish_width: 0
+      publish_height: 0
+
+  go2_scanpublisher:
+    ros__parameters:
+      target_frame: 'lidar_link'
+      pcd_sub: '/utlidar/cloud_deskewed'
+      scan_pub: '/go2/scan'
+      min_height: 0.1
+      max_height: 0.3
+      scan_time: 0.005
+      range_min: 0.0
+      range_max: 10.0
+      use_inf: True
+      inf_epsilon: 1.0
+      angle_increment: 0.01
+      point_clouds_combine: 5
+      transform_tolerance: 0.01
+      publisher_frequency: 50

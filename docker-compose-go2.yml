@@ -1,0 +1,56 @@
+services:
+
+  go2-domain-bridge:
+    image: go2-domain-bridge:latest
+    container_name: go2-domain-bridge
+    init: true
+    network_mode: host
+    environment:
+      - "CYCLONEDDS_URI=${CYCLONEDDS_URI_BRIDGE:-file:///home/go2/config/cyclonedds.xml}"
+    volumes:
+      - ./dockerfiles/go2-domain-bridge/config:/home/go2/config:rw
+    restart: unless-stopped
+
+  go2-driver:
+    image: go2-driver:latest
+    container_name: go2-driver
+    init: true
+    network_mode: host
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=10
+      - "CYCLONEDDS_URI=${CYCLONEDDS_URI:-<CycloneDDS><Domain><General><Interfaces><NetworkInterface autodetermine='false' name='lo' priority='default' multicast='true'/></Interfaces><AllowMulticast>true</AllowMulticast><MaxMessageSize>65500B</MaxMessageSize></General><Internal><SocketReceiveBufferSize min='10MB'/><SocketSendBufferSize min='10MB'/><Watermarks><WhcHigh>500kB</WhcHigh></Watermarks></Internal></Domain></CycloneDDS>}"
+      - GO2_LAN_PORT=enp2s0
+    # volumes (dev):
+    #   - ./dockerfiles/go2-driver/src:/home/go2/ros2_ws/src:rw
+    depends_on:
+      - go2-domain-bridge
+    restart: unless-stopped
+
+  robot-trajectories:
+    image: robot-trajectories:latest
+    container_name: robot-trajectories
+    init: true
+    network_mode: host
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=10
+      - "CYCLONEDDS_URI=${CYCLONEDDS_URI:-<CycloneDDS><Domain><General><Interfaces><NetworkInterface autodetermine='false' name='lo' priority='default' multicast='true'/></Interfaces><AllowMulticast>true</AllowMulticast><MaxMessageSize>65500B</MaxMessageSize></General><Internal><SocketReceiveBufferSize min='10MB'/><SocketSendBufferSize min='10MB'/><Watermarks><WhcHigh>500kB</WhcHigh></Watermarks></Internal></Domain></CycloneDDS>}"
+    volumes:
+      - ./dockerfiles/robot-trajectories/scripts:/home/robot/scripts:rw
+    depends_on:
+      - go2-driver
+    restart: unless-stopped
+
+  bags-collector:
+    image: bags-collector:latest
+    container_name: bags-collector
+    init: true
+    network_mode: host
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=10
+      - "CYCLONEDDS_URI=${CYCLONEDDS_URI:-<CycloneDDS><Domain><General><Interfaces><NetworkInterface autodetermine='false' name='lo' priority='default' multicast='true'/></Interfaces><AllowMulticast>true</AllowMulticast><MaxMessageSize>65500B</MaxMessageSize></General><Internal><SocketReceiveBufferSize min='10MB'/><SocketSendBufferSize min='10MB'/><Watermarks><WhcHigh>500kB</WhcHigh></Watermarks></Internal></Domain></CycloneDDS>}"
+    volumes:
+      - ./bags:/home/robot/bags:rw
+    restart: unless-stopped

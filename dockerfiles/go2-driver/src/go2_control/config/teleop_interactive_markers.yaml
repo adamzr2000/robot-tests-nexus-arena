@@ -1,0 +1,7 @@
+twist_server_node:
+  ros__parameters:
+    link_name: base_link
+    robot: go2
+    linear_scale: 0.5
+    max_positive_linear_velocity: 0.5
+    max_negative_linear_velocity: -0.5

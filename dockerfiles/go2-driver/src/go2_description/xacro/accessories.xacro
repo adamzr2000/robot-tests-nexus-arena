@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Add Open Manipulator -->
+  <xacro:include filename="$(find go2_description)/xacro/open_manipulator/om_complete.urdf.xacro" />
+
+</robot>

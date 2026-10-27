@@ -1,0 +1,15 @@
+topics:
+  /sportmodestate:
+    type: unitree_go/msg/SportModeState
+    from_domain: 0
+    to_domain: 10
+
+  /utlidar/robot_odom:
+    type: nav_msgs/msg/Odometry
+    from_domain: 0
+    to_domain: 10
+
+  /utlidar/cloud_deskewed:
+    type: sensor_msgs/msg/PointCloud2
+    from_domain: 0
+    to_domain: 10

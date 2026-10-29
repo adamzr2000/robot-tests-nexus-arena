@@ -57,17 +57,33 @@ Topic rates (measured):
 
 RoverX's driver applies commands at 50 Hz and stops after 0.5 s without one.
 
-## Defaults and laps: timed vs measured
+## Command profile (timed runs)
 
-Defaults are shared by both robots: 0.3 m/s and 0.3 rad/s, circle radius 1 m,
-square side 1 m. Timed runs (the default) send the identical command stream to
-any robot, so execution error (slip) can be compared against ground truth.
+Timed runs (the default) are open loop and send the identical command stream to
+any robot, so execution error (slip) can be compared against ground truth:
+
+- `/cmd_vel` at 10 Hz; 0.3 m/s and 0.3 rad/s; circle and figure-8 radius 1 m; square side 1 m.
+- Linear ramp 0 -> full speed over the first 1 s and back to 0 over the last 1 s,
+  applied to linear and angular speed alike (circle radius stays exact). The run
+  is lengthened by the ramp time so the commanded distance/angle is exact:
+  one circle lap = 21.9 s, one square lap = 35.3 s, one figure-8 lap = 42.9 s.
+- Square: instantaneous switch between straight and turning phases.
+- Figure-8: two tangent loops of the same radius from the crossing point, first
+  left (or right with `clockwise`), constant forward speed; the turn direction
+  flips instantly at the crossing. One lap = both loops; it needs 4 x radius
+  sideways and 2 x radius along the start heading.
+- Robot preparation (RoverX: lidar, wheel power, 2 s still) happens before the
+  profile starts and doesn't affect it. The exact commands are in the bag's `/cmd_vel`.
+
+## Laps: timed vs measured
 
 `laps` alone is timed from the commanded speed, so real laps drift. With
 `"use_odom": true` they're measured (feedback from the robot's own odometry):
 - **circle**: a lap is 360 degrees of heading.
 - **square**: sides by distance, corners toward absolute k * 90 degree headings,
   so heading error doesn't accumulate. `laps` rounds up to whole sides.
+- **figure8**: each loop ends at an absolute heading (+360 degrees, then back to
+  0). `laps` rounds up to whole loops.
 
 Measured runs wait up to 10 s for odometry before moving, stop if it goes silent
 for 1 s, and stop at 2x the timed estimate if the target isn't reached.
@@ -75,7 +91,7 @@ for 1 s, and stop at 2x the timed estimate if the target isn't reached.
 ## Safety
 
 - Refuses speeds above the caps; numeric flags must be finite.
-- Ramps up over `--ramp-time` (default 1 s).
+- Ramps up over `--ramp-time` (default 1 s), and down at the end of timed runs.
 - On any exit (done, Ctrl+C, `/stop`) sends a zero `Twist` 5 times, then the
   profile's stop services.
 

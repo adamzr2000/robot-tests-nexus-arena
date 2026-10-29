@@ -14,20 +14,39 @@ set -eo pipefail
 SPEED=0.15
 TURN=0.4
 TELEOP_TOPIC=/roverx_teleop/cmd_vel
+DRIVER=/smart_rover_driver
+CAPS=()  # driver parameter/value pairs to apply for this session only
 
 usage() {
-  echo "Usage: $0 [--speed <m/s>] [--turn <rad/s>]"
+  echo "Usage: $0 [--speed <m/s>] [--turn <rad/s>] [--max-linear <m/s>] [--max-angular <rad/s>]"
   echo "Defaults: --speed 0.15, --turn 0.4. Quit with Ctrl+C: stops the robot and cuts wheel power."
+  echo "--max-linear/--max-angular raise the robot driver's speed caps (0.6 m/s, 1.0 rad/s)"
+  echo "while teleop runs; the previous caps are restored on exit."
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --speed)   SPEED="${2:?--speed needs a value}"; shift 2 ;;
-    --turn)    TURN="${2:?--turn needs a value}";   shift 2 ;;
+    --speed)       SPEED="${2:?--speed needs a value}"; shift 2 ;;
+    --turn)        TURN="${2:?--turn needs a value}";   shift 2 ;;
+    --max-linear)  CAPS+=( max_linear "$(printf '%.3f' "${2:?--max-linear needs a value}")" ); shift 2 ;;
+    --max-angular) CAPS+=( max_angular "$(printf '%.3f' "${2:?--max-angular needs a value}")" ); shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1"; usage; exit 1 ;;
   esac
 done
+
+set_caps() {
+  while [[ $# -gt 0 ]]; do
+    ros2 param set "$DRIVER" "$1" "$2" >/dev/null && echo "Driver $1 = $2"
+    shift 2
+  done
+}
+
+RESTORE=()
+for ((i = 0; i < ${#CAPS[@]}; i += 2)); do
+  RESTORE+=( "${CAPS[i]}" "$(ros2 param get "$DRIVER" "${CAPS[i]}" | awk '{print $NF}')" )
+done
+set_caps "${CAPS[@]}"
 
 TELEOP_TOPIC="$TELEOP_TOPIC" python3 - <<'EOF' &
 import os
@@ -123,6 +142,7 @@ GUARD_PID=$!
 stop_guard() {
   kill -TERM "$GUARD_PID" 2>/dev/null || true
   wait "$GUARD_PID" 2>/dev/null || true
+  set_caps "${RESTORE[@]}" || true
 }
 trap stop_guard EXIT
 

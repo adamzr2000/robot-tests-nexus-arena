@@ -60,7 +60,7 @@ def check_speed_caps(linear_speed, angular_speed, max_linear_speed, max_angular_
 
 def add_common_args(parser):
     """Flags shared by every trajectory script: robot profile, stop condition,
-    odometry, rate, topics, ramp-up, and safety caps."""
+    odometry, rate, topics, ramps, and safety caps."""
     parser.add_argument("--robot", choices=sorted(ROBOT_PROFILES), default=None,
                          help="Robot profile: topics, speed caps and robot preparation "
                               "(see robot_profiles.py)")
@@ -79,8 +79,9 @@ def add_common_args(parser):
     parser.add_argument("--odom-topic", type=str, default=None,
                          help="nav_msgs/Odometry topic for --use-odom (default: from --robot)")
     parser.add_argument("--ramp-time", type=float, default=1.0,
-                         help="Seconds to linearly ramp from 0 up to full speed at start, instead "
-                              "of commanding it instantly from a standstill (default: 1.0; 0 disables)")
+                         help="Seconds of linear ramp from 0 to full speed at start and, on timed "
+                              "runs, back to 0 at the end; timed laps are lengthened so the commanded "
+                              "distance/angle stays exact (default: 1.0; 0 disables)")
     parser.add_argument("--max-linear-speed", type=float, default=None,
                          help=f"Safety cap on linear speed in m/s; refuses to run above it unless "
                               f"raised explicitly (default: from --robot, else {DEFAULT_MAX_LINEAR_SPEED:g})")
@@ -127,19 +128,43 @@ def yaw_from_quaternion(q):
     return math.atan2(2.0 * (q.w * q.z + q.x * q.y), q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z)
 
 
-def full_speed_time(elapsed, ramp_time):
+def ramp_scale(elapsed, ramp_time, end=None):
+    """Speed factor at `elapsed`: linear 0->1 over the first `ramp_time` and,
+    when the run's `end` is known, 1->0 over the last `ramp_time`."""
+    if ramp_time <= 0:
+        return 1.0
+    scale = min(1.0, elapsed / ramp_time)
+    if end is not None:
+        scale = min(scale, (end - elapsed) / ramp_time)
+    return max(0.0, scale)
+
+
+def full_speed_time(elapsed, ramp_time, end=None):
     """Seconds at full speed that cover the same ground as `elapsed` seconds
-    of a run ramping up linearly over `ramp_time`."""
-    if elapsed >= ramp_time:
-        return elapsed - ramp_time / 2
-    return elapsed * elapsed / (2 * ramp_time)
+    of the ramped run (the integral of ramp_scale)."""
+    if ramp_time <= 0:
+        return elapsed
+    if end is not None and end < 2 * ramp_time:  # ramps meet in the middle
+        half = end / 2
+        if elapsed <= half:
+            return elapsed * elapsed / (2 * ramp_time)
+        left = end - min(elapsed, end)
+        return (2 * half * half - left * left) / (2 * ramp_time)
+    up = elapsed * elapsed / (2 * ramp_time) if elapsed < ramp_time else elapsed - ramp_time / 2
+    if end is None:
+        return up
+    down = max(0.0, min(elapsed, end) - (end - ramp_time))
+    return min(up, end - ramp_time / 2) - down * down / (2 * ramp_time)
 
 
 def ramped_time(full_time, ramp_time):
-    """Inverse of full_speed_time."""
-    if full_time >= ramp_time / 2:
-        return full_time + ramp_time / 2
-    return math.sqrt(2 * ramp_time * full_time)
+    """Run length with ramps at both ends that covers `full_time` seconds of
+    full-speed motion (inverse of full_speed_time at the end of the run)."""
+    if ramp_time <= 0:
+        return full_time
+    if full_time >= ramp_time:
+        return full_time + ramp_time
+    return 2 * math.sqrt(ramp_time * full_time)
 
 
 class ImuHeading:
@@ -216,8 +241,9 @@ class OdomTracker:
 
 class TrajectoryNode(Node):
     """Publishes the subclass's `twist(t)` at --rate once started, ramped up
-    over --ramp-time. `t` is full_speed_time, so timed phases stay exact
-    through the ramp. twist() returns None after calling finish()."""
+    over --ramp-time and, when the end time is known (timed runs), ramped down
+    over the last --ramp-time. `t` is full_speed_time, so timed phases stay
+    exact through the ramps. twist() returns None after calling finish()."""
 
     def __init__(self, name, args, odom_topic=None):
         super().__init__(name)
@@ -232,10 +258,12 @@ class TrajectoryNode(Node):
         self._period = 1.0 / args.rate
         self._ramp_time = args.ramp_time
         self._start = None
+        self._end = None
         self._timer = None
 
-    def start(self):
+    def start(self, end=None):
         self._start = self.get_clock().now()
+        self._end = end
         self._timer = self.create_timer(self._period, self._tick)
 
     def elapsed(self):
@@ -252,10 +280,10 @@ class TrajectoryNode(Node):
         if self.finished:
             return
         elapsed = self.elapsed()
-        msg = self.twist(full_speed_time(elapsed, self._ramp_time))
+        msg = self.twist(full_speed_time(elapsed, self._ramp_time, self._end))
         if msg is None:
             return
-        scale = min(1.0, elapsed / self._ramp_time) if self._ramp_time > 0 else 1.0
+        scale = ramp_scale(elapsed, self._ramp_time, self._end)
         msg.linear.x *= scale
         msg.linear.y *= scale
         msg.angular.z *= scale
@@ -343,7 +371,7 @@ def run(node, duration=None):
             _spin_for(node, SETTLE_S)
         if node.odom:
             node.odom.calibrate()
-        node.start()
+        node.start(duration)
         while rclpy.ok() and not node.finished:
             rclpy.spin_once(node, timeout_sec=0.1)
             elapsed = node.elapsed()

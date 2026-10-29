@@ -42,6 +42,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TRAJECTORIES = {
     "circle": "circle_walk.py",
     "square": "square_walk.py",
+    "figure8": "figure8_walk.py",
 }
 
 # Fast-fail check: wait this long after launch, then see if the script

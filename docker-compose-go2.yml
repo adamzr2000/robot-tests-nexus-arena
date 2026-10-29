@@ -6,9 +6,10 @@ services:
     init: true
     network_mode: host
     environment:
-      - "CYCLONEDDS_URI=${CYCLONEDDS_URI_BRIDGE:-file:///home/go2/config/cyclonedds.xml}"
+      - CYCLONEDDS_URI=file:///home/go2/cyclonedds_bridge.xml
     volumes:
       - ./dockerfiles/go2-domain-bridge/config:/home/go2/config:rw
+      - ./.generated/cyclonedds_go2_bridge.xml:/home/go2/cyclonedds_bridge.xml:ro
     restart: unless-stopped
 
   go2-driver:
@@ -20,7 +21,7 @@ services:
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_DOMAIN_ID=10
       - "CYCLONEDDS_URI=${CYCLONEDDS_URI:-<CycloneDDS><Domain><General><Interfaces><NetworkInterface autodetermine='false' name='lo' priority='default' multicast='true'/></Interfaces><AllowMulticast>true</AllowMulticast><MaxMessageSize>65500B</MaxMessageSize></General><Internal><SocketReceiveBufferSize min='10MB'/><SocketSendBufferSize min='10MB'/><Watermarks><WhcHigh>500kB</WhcHigh></Watermarks></Internal></Domain></CycloneDDS>}"
-      - GO2_LAN_PORT=enp2s0
+      - GO2_LAN_PORT=${GO2_LAN_PORT:-eno1}
     # volumes (dev):
     #   - ./dockerfiles/go2-driver/src:/home/go2/ros2_ws/src:rw
     depends_on:

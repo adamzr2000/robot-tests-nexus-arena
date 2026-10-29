@@ -83,7 +83,10 @@ WORKDIR /home/go2
 RUN mkdir -p /home/go2/ros2_ws/src
 COPY src/ /home/go2/ros2_ws/src/
 
-RUN chmod +x /home/go2/ros2_ws/src/start_go2_drivers.sh
+RUN chmod +x /home/go2/ros2_ws/src/start_go2_drivers.sh \
+             /home/go2/ros2_ws/src/go2_base/go2_base/go2_statepublisher \
+             /home/go2/ros2_ws/src/go2_base/go2_base/go2_scanpublisher \
+             /home/go2/ros2_ws/src/go2_base/go2_base/go2_camerapublisher
 
 # Install package dependencies (cached unless src changes)
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \

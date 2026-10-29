@@ -1,10 +1,8 @@
 # bags-collector
 
-Container for recording `ros2 bag` data over HTTP, so data collection can be
-triggered remotely instead of shelling into the robot. Plain stdlib script
-under `scripts/main.py`, no ROS2 package, started by default on port 8081
-(not 8080: with `network_mode: host` this runs alongside
-`robot-trajectories`'s API, which already owns 8080).
+Records `ros2 bag` over HTTP (`scripts/main.py`, port 8081). Normally driven by
+`robot-trajectories` with `"record_bag": true`; call it directly only to record
+outside a trajectory.
 
 ## Endpoints
 
@@ -39,5 +37,5 @@ curl localhost:8081/bags
 ## Exporting data
 
 `BAGS_DIR` (default `/home/robot/bags`) is bind-mounted to `./bags` at the
-repo root in `docker-compose-go2.yml`, so recordings land there directly on
+repo root in `docker-compose-go2.yml` and `docker-compose-roverx.yml`, so recordings land there directly on
 the host, ready to copy off without needing to reach into the container.

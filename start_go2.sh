@@ -2,14 +2,15 @@
 set -euo pipefail
 
 DDS_INTERFACE="lo"
+ROBOT_INTERFACE="eno1"
 
 usage() {
-  echo "Usage: $0 [--iface IFNAME]"
-  echo "  --iface  IFNAME  Network interface for DDS (default: lo). go2-driver,"
-  echo "                   robot-trajectories, and bags-collector all share this"
-  echo "                   same config, and the domain-10 side of go2-domain-bridge"
-  echo "                   follows it too, so all four stay reachable when DDS"
-  echo "                   traffic moves off loopback."
+  echo "Usage: $0 [--iface IFNAME] [--robot-iface IFNAME]"
+  echo "  --iface        Interface for the local DDS graph, domain 10 (default: lo)."
+  echo "                 go2-driver, robot-trajectories, bags-collector and the"
+  echo "                 domain-10 side of go2-domain-bridge all use it."
+  echo "  --robot-iface  Interface wired to the Go2 (default: eno1). The bridge's"
+  echo "                 domain-0 side and the camera stream use it."
   exit 1
 }
 
@@ -18,6 +19,11 @@ while [[ $# -gt 0 ]]; do
     --iface|--if|--interface)
       [[ $# -ge 2 ]] || usage
       DDS_INTERFACE="$2"
+      shift 2
+      ;;
+    --robot-iface)
+      [[ $# -ge 2 ]] || usage
+      ROBOT_INTERFACE="$2"
       shift 2
       ;;
     -h|--help) usage ;;
@@ -55,7 +61,12 @@ if (( CURRENT_RMEM < REQUIRED || CURRENT_WMEM < REQUIRED )); then
   "${SUDO[@]}" sysctl -w net.ipv4.ipfrag_high_thresh=134217728 >/dev/null
 fi
 
-echo "Using DDS interface: ${DDS_INTERFACE}"
+if ! ip link show dev "$ROBOT_INTERFACE" >/dev/null 2>&1; then
+  echo "ERROR: robot interface '$ROBOT_INTERFACE' not found (see --robot-iface)"
+  exit 1
+fi
+
+echo "Using DDS interface: ${DDS_INTERFACE}, robot interface: ${ROBOT_INTERFACE}"
 
 # ── DDS config ────────────────────────────────────────────────────────────────
 if [[ "$DDS_INTERFACE" == "lo" ]]; then
@@ -67,21 +78,34 @@ fi
 export CYCLONEDDS_URI
 
 # ── DDS config for go2-domain-bridge ─────────────────────────────────────────
-# The bridge's "robot0" interface (the robot's own internal LAN NIC, for the
-# domain-0 side) is fixed on purpose and left alone here. Only the domain-10
-# side — the one the bridge uses to reach go2-driver — follows DDS_INTERFACE,
-# so the two containers stay on the same NIC instead of silently falling out
-# of discovery when driver traffic moves off loopback (e.g. --iface for a
-# NAT/edge setup). Left unset for the lo default, which keeps the bridge on
-# its built-in file:///home/go2/config/cyclonedds.xml — unchanged behavior.
-CYCLONEDDS_URI_BRIDGE=""
-if [[ "$DDS_INTERFACE" != "lo" ]]; then
-  CYCLONEDDS_URI_BRIDGE="<CycloneDDS><Domain Id='any'><General><Interfaces><NetworkInterface name='robot0' multicast='default'/><NetworkInterface name='${DDS_INTERFACE}' multicast='default'/></Interfaces><DontRoute>true</DontRoute></General></Domain></CycloneDDS>"
+# Domain 0 (the robot) on ROBOT_INTERFACE, domain 10 (go2-driver & co.) on
+# DDS_INTERFACE. Generated so neither interface is hard-coded in a file.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ "$DDS_INTERFACE" == "lo" ]]; then
+  LOCAL_IFACE="<NetworkInterface address=\"127.0.0.1\" multicast=\"true\"/>"
+else
+  LOCAL_IFACE="<NetworkInterface name=\"${DDS_INTERFACE}\" multicast=\"default\"/>"
 fi
-export CYCLONEDDS_URI_BRIDGE
+BRIDGE_CONFIG="${SCRIPT_DIR}/.generated/cyclonedds_go2_bridge.xml"
+mkdir -p "${SCRIPT_DIR}/.generated"
+cat > "$BRIDGE_CONFIG" <<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain Id="any">
+    <General>
+      <Interfaces>
+        <NetworkInterface name="${ROBOT_INTERFACE}" multicast="default"/>
+        ${LOCAL_IFACE}
+      </Interfaces>
+      <DontRoute>true</DontRoute>
+    </General>
+  </Domain>
+</CycloneDDS>
+XML
+chmod 644 "$BRIDGE_CONFIG"
+export GO2_LAN_PORT="$ROBOT_INTERFACE"
 
 # ── Launch ────────────────────────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 docker compose -f "${SCRIPT_DIR}/docker-compose-go2.yml" up -d
 
 echo "Done. Use 'docker compose -f ${SCRIPT_DIR}/docker-compose-go2.yml logs -f' to follow logs."

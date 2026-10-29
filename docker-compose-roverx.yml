@@ -1,0 +1,36 @@
+# RoverX stack: trajectories and bag recording, talking straight to the robot's
+# ROS graph (no driver or bridge needed: the robot publishes on its own domain).
+# FastDDS like the robot, restricted to one interface by the profile that
+# start_roverx.sh generates. Use ./start_roverx.sh / ./stop_roverx.sh.
+name: roverx
+
+x-ros-env: &ros-env
+  - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  - ROS_DOMAIN_ID=${ROVERX_DOMAIN_ID:-0}
+  - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profile.xml
+
+services:
+
+  robot-trajectories:
+    image: robot-trajectories:latest
+    container_name: robot-trajectories
+    init: true
+    network_mode: host
+    environment: *ros-env
+    volumes:
+      - ./dockerfiles/robot-trajectories/scripts:/home/robot/scripts:rw
+      - ./.generated/fastdds_roverx.xml:/fastdds_profile.xml:ro
+    depends_on:
+      - bags-collector
+    restart: unless-stopped
+
+  bags-collector:
+    image: bags-collector:latest
+    container_name: bags-collector
+    init: true
+    network_mode: host
+    environment: *ros-env
+    volumes:
+      - ./bags:/home/robot/bags:rw
+      - ./.generated/fastdds_roverx.xml:/fastdds_profile.xml:ro
+    restart: unless-stopped

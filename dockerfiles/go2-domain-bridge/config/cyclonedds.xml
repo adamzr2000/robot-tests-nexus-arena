@@ -6,7 +6,7 @@
     <Domain Id="any">
         <General>
             <Interfaces>
-                <NetworkInterface name="robot0" multicast="default" />
+                <NetworkInterface name="eno1" multicast="default" />
                 <NetworkInterface address="127.0.0.1" multicast="true" />
             </Interfaces>
             <DontRoute>true</DontRoute>

@@ -6,15 +6,29 @@ container_name="ros-dev"
 ros_domain_id=0
 
 dds="cyclone"
-iface="lo"   # only applies to cyclone
+iface="lo"
 gui=0        # default: no GUI/X11
 gpu=0        # default: no GPU access
 
+# Helper scripts (teleop, ...) are always available in the container at /scripts
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="${REPO_DIR}/dockerfiles/ros-humble-dev/scripts"
+VOLUME_ARGS=( --volume="${SCRIPTS_DIR}:/scripts:ro" )
+
 usage() {
-  echo "Usage: $0 [--ros-domain-id <id>] [--dds cyclone|fast] [--iface <iface>] [--gui] [--gpu]"
-  echo "Defaults: --ros-domain-id 0, --dds cyclone (UDP), --iface lo (cyclone only), --gui off, --gpu off"
+  echo "Usage: $0 [--ros-domain-id <id>] [--dds cyclone|fast] [--iface <iface>] [--gui] [--gpu] [--] [command ...]"
+  echo "Defaults: --ros-domain-id 0, --dds cyclone (UDP), --iface lo, --gui off, --gpu off"
   echo "  --dds cyclone|fast   DDS vendor (default: cyclone). Both run their standard UDP"
-  echo "                       discovery; --iface only applies to cyclone."
+  echo "                       discovery."
+  echo "  --iface <iface>      The only network interface DDS may use, for either vendor."
+  echo "                       FastDDS is restricted by the interface's IPv4 address, so"
+  echo "                       the interface must be up with an address."
+  echo "  command ...          Run this instead of an interactive bash shell (ROS is"
+  echo "                       already sourced). Everything after the first non-option"
+  echo "                       argument, or after '--', is passed through as-is, e.g.:"
+  echo "                         $0 --ros-domain-id 10 /scripts/teleop.sh"
+  echo "                         $0 --ros-domain-id 10 -- ros2 topic echo /cmd_vel --once"
+  echo "Scripts in dockerfiles/ros-humble-dev/scripts are mounted read-only at /scripts."
 }
 
 need_arg() {
@@ -36,9 +50,19 @@ while [[ $# -gt 0 ]]; do
     --gui)           gui=1; shift ;;
     --gpu)           gpu=1; shift ;; # Added GPU flag
     -h|--help)       usage; exit 0 ;;
-    *) echo "Unknown option: $1"; usage; exit 1 ;;
+    --)              shift; break ;;
+    -*) echo "Unknown option: $1"; usage; exit 1 ;;
+    *)               break ;; # first non-option: start of the command
   esac
 done
+
+# Remaining args are the command to run; default to an interactive shell
+cmd=( "$@" )
+[[ ${#cmd[@]} -eq 0 ]] && cmd=( bash )
+
+# Only allocate a TTY when we have one, so piped/scripted commands still work
+TTY_ARGS=( -i )
+[[ -t 0 && -t 1 ]] && TTY_ARGS+=( -t )
 
 # Validate DDS choice + set RMW
 case "$dds" in
@@ -73,19 +97,30 @@ if [[ "$gui" -eq 1 ]]; then
   )
 fi
 
+# lo needs multicast enabled on the host for DDS discovery; CycloneDDS can't
+# even create a participant on it otherwise ("not multicast-capable").
+if [[ "$iface" == "lo" ]] && ! ip link show lo | grep -q MULTICAST; then
+  echo "Enabling multicast on loopback..."
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    ip link set lo multicast on
+  else
+    sudo ip link set lo multicast on
+  fi
+fi
+
+# FastDDS: restricted to the interface's IPv4 address (see fastdds_profile.sh)
+if [[ "$dds" == "fast" ]]; then
+  fastdds_profile="$(mktemp --suffix=.xml)"
+  trap 'rm -f "$fastdds_profile"' EXIT
+  "${REPO_DIR}/dockerfiles/fastdds_profile.sh" "$iface" > "$fastdds_profile"
+  iface_ip="$(grep -o '<address>[^<]*' "$fastdds_profile" | cut -d'>' -f2)"
+  chmod 644 "$fastdds_profile"
+  VOLUME_ARGS+=( --volume="${fastdds_profile}:/fastdds_profile.xml:ro" )
+  EXTRA_ENV_ARGS+=( --env="FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profile.xml" )
+fi
+
 # Only for cyclone: set CYCLONEDDS_URI inline — no host dir or mount needed
 if [[ "$dds" == "cyclone" ]]; then
-  # lo needs multicast enabled on the host, or CycloneDDS can't create a
-  # participant on it at all ("selected interface is not multicast-capable").
-  if [[ "$iface" == "lo" ]] && ! ip link show lo | grep -q MULTICAST; then
-    echo "Enabling multicast on loopback..."
-    if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-      ip link set lo multicast on
-    else
-      sudo ip link set lo multicast on
-    fi
-  fi
-
   # The config below asks for a 10MB socket receive buffer; the kernel caps
   # it at net.core.rmem_max, which defaults well under that on most distros.
   REQUIRED=10485760
@@ -107,13 +142,14 @@ echo "  image:          $container_image"
 echo "  name:           $container_name"
 echo "  ROS_DOMAIN_ID:  $ros_domain_id"
 echo "  DDS:            $dds"
-[[ "$dds" == "cyclone" ]] && echo "  iface:          $iface"
+echo "  iface:          $iface${iface_ip:+ ($iface_ip)}"
 echo "  GUI:            $([[ "$gui" -eq 1 ]] && echo on || echo off)"
 echo "  GPU:            $([[ "$gpu" -eq 1 ]] && echo on || echo off)"
+echo "  command:        ${cmd[*]}"
 
 
 docker run \
-  -it \
+  "${TTY_ARGS[@]}" \
   --rm \
   --name "${container_name}" \
   --env="ROS_DOMAIN_ID=${ros_domain_id}" \
@@ -121,6 +157,7 @@ docker run \
   --privileged \
   "${GPU_ARGS[@]}" \
   "${GUI_ARGS[@]}" \
+  "${VOLUME_ARGS[@]}" \
   "${EXTRA_ENV_ARGS[@]}" \
   "${container_image}" \
-  bash
+  "${cmd[@]}"

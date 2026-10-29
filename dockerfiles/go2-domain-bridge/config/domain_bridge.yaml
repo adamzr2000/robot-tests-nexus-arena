@@ -13,3 +13,14 @@ topics:
     type: sensor_msgs/msg/PointCloud2
     from_domain: 0
     to_domain: 10
+
+  # Commands from go2-driver (go2_highroscontrol) back to the robot
+  /api/sport/request:
+    type: unitree_api/msg/Request
+    from_domain: 10
+    to_domain: 0
+
+  /api/vui/request:
+    type: unitree_api/msg/Request
+    from_domain: 10
+    to_domain: 0

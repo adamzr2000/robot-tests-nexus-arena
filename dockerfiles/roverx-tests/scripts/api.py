@@ -48,7 +48,7 @@ SETPOINT_LABEL = {"speed": "v", "accel": "a"}
 
 # manual.csv: the API owns the first columns, the operator the rest
 MANUAL_AUTO = ["trial_id", "test", "setpoint", "repeat", "status"]
-MANUAL_OPERATOR = ["dx_cm", "dy_cm", "total_cm", "override_status", "observations", "notes"]
+MANUAL_OPERATOR = ["dx_cm", "dy_cm", "override_status", "observations", "notes"]
 
 _lock = threading.Lock()
 _current = {}  # id, test, proc, bag, dir, record, started, watcher
@@ -131,12 +131,11 @@ CSV_COLUMNS = [
     "odom_end_m", "heading_change_deg",
     "coast_after_stop_m",                                                       # T1
     "t10_s", "t90_s", "planned_t90_s", "accel_measured",                        # T2
-    "stop_mode", "trigger_odom_m", "speed_at_trigger", "steady_before_trigger_s", "steady_ok",
-    "braking_odom_m", "braking_time_s", "braking_t95_s", "wheels_powered_at_rest",                        # T3
+    "stop_mode", "stop_odom_m", "speed_at_stop", "steady_before_stop_s", "steady_ok",
+    "braking_odom_m", "braking_time_s", "braking_t95_s", "wheels_powered_at_rest",  # T3
     "imu_fwd_speedup_mean", "imu_speedup_dir_deg", "imu_fwd_slowdown_mean", "imu_slowdown_dir_deg",
     "imu_fwd_braking_mean", "imu_braking_dir_deg", "clock_offset_s",
-    "dx_cm", "dy_cm", "endpoint_error_cm", "odom_error_cm",                     # T1 tape
-    "total_cm", "stop_distance_cm",                                             # T3 tape
+    "dx_cm", "dy_cm", "endpoint_error_cm", "odom_error_cm", "stop_distance_cm",  # tape (all tests)
     "observations", "notes", "bag",
 ]
 
@@ -150,14 +149,16 @@ def csv_row(t, man):
                stop_mode=p.get("stop_mode"), observations=man.get("observations"),
                notes="; ".join(x for x in (t.get("notes"), man.get("notes")) if x),
                bag=os.path.join(t["id"], "bag"))
-    dx, dy, total = number(man.get("dx_cm")), number(man.get("dy_cm")), number(man.get("total_cm"))
-    row.update(dx_cm=dx, dy_cm=dy, total_cm=total)
-    if t["test"] == "T1" and dx is not None and dy is not None:
+    dx, dy = number(man.get("dx_cm")), number(man.get("dy_cm"))
+    row.update(dx_cm=dx, dy_cm=dy)
+    # dx is measured from the distance line (8 m), so the real rest position is distance + dx
+    if dx is not None and m.get("odom_end_m") is not None:  # real rest position minus odometry at rest
+        row["odom_error_cm"] = p["distance"] * 100 + dx - m["odom_end_m"] * 100
+    if t["test"] in ("T1", "T2") and dx is not None and dy is not None:
         row["endpoint_error_cm"] = math.hypot(dx, dy)
-        if m.get("odom_end_m") is not None:  # real travel (distance + dx) minus what odometry says
-            row["odom_error_cm"] = p["distance"] * 100 + dx - m["odom_end_m"] * 100
-    if t["test"] == "T3" and total is not None and m.get("trigger_odom_m") is not None:
-        row["stop_distance_cm"] = total - m["trigger_odom_m"] * 100
+    if t["test"] == "T3" and dx is not None and m.get("stop_odom_m") is not None:
+        # real rest position minus the odometry position where v=0 was commanded
+        row["stop_distance_cm"] = p["distance"] * 100 + dx - m["stop_odom_m"] * 100
     return {k: (round(v, 4) if isinstance(v, float) else v) for k, v in row.items()}
 
 

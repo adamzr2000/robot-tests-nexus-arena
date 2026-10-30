@@ -46,18 +46,18 @@ tests:
     condition: accel
     values: [0.2, 0.5, 1.0]
     repetitions: 5
-    speed: 1.0                 # ramp target
-    hold_s: 2.0                # at target speed before slowing down
-    decel: 0.5                 # controlled slowdown, same for every condition
-    distance_guard: 1.0        # abort if odometry passes the planned distance + this
+    speed: 1.0                 # cruise speed after the speed-up under test
+    distance: 8.0              # as T1: stop when odometry reads this; tape dx/dy here
+    decel: 0.5                 # slow-down, same for every condition (= T1's)
+    overshoot_guard: 0.5       # abort if odometry passes distance + this
 
   T3:
     name: Stopping response
     condition: speed
     values: [0.2, 0.5, 1.0, 1.5]
     repetitions: 5
-    accel: 0.5                 # approach acceleration
-    trigger: 6.0               # odometry distance of the stop trigger (the marked line)
-    min_steady_s: 1.0          # required time at target speed (control.steady_*) before the trigger
-    stop_mode: active          # active: hold v=0 (controllers brake) | coast: cut wheel power at the trigger
-    braking_guard: 4.0         # abort if odometry passes trigger + this
+    accel: 0.5                 # approach acceleration, as T1
+    distance: 8.0              # as T1, but here v=0 is commanded at once when odometry reads it
+    min_steady_s: 1.0          # required time at target speed (control.steady_*) before the stop
+    stop_mode: active          # active: hold v=0 (controllers brake) | coast: cut wheel power at the stop
+    braking_guard: 4.0         # abort if odometry passes distance + this

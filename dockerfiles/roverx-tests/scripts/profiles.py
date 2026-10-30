@@ -30,12 +30,14 @@ class Steady:
         return 0.0 if self.since is None else t - self.since
 
 
-class T1Straight:
-    """Accelerate at `accel` to `speed`, cruise, then decelerate at `accel`
-    (down to a crawl) and stop when odometry reads `distance`."""
+class Straight:
+    """T1 and T2: accelerate at `accel` to `speed`, cruise, then decelerate at
+    `decel` (T1: same as accel) down to a crawl, and stop when odometry reads
+    `distance`."""
 
     def __init__(self, p, crawl):
         self.speed, self.accel, self.distance = p["speed"], p["accel"], p["distance"]
+        self.decel = p.get("decel", self.accel)
         self.crawl = min(crawl, self.speed)
         self.max_distance = self.distance + p["overshoot_guard"]
         self.cmd = 0.0
@@ -47,7 +49,7 @@ class T1Straight:
             self.phase = "stop"
             return None
         up = min(self.speed, self.cmd + self.accel * dt)
-        down = max(self.crawl, math.sqrt(2 * self.accel * remaining))
+        down = max(self.crawl, math.sqrt(2 * self.decel * remaining))
         self.cmd = min(up, down)
         if self.cmd >= self.speed:
             self.phase = "cruise"
@@ -58,47 +60,19 @@ class T1Straight:
         return self.cmd
 
 
-class T2Accel:
-    """From rest, ramp at `accel` to `speed`, hold `hold_s`, slow down at
-    `decel`. Purely timed: the command is the setpoint under test."""
-
-    def __init__(self, p, crawl):
-        self.speed, self.accel, self.decel = p["speed"], p["accel"], p["decel"]
-        self.t_up = self.speed / self.accel
-        self.t_hold = self.t_up + p["hold_s"]
-        self.t_end = self.t_hold + self.speed / self.decel
-        planned = (self.speed ** 2 / (2 * self.accel) + self.speed * p["hold_s"]
-                   + self.speed ** 2 / (2 * self.decel))
-        self.max_distance = planned + p["distance_guard"]
-        self.phase = "accel"
-
-    def command(self, t, d, v, dt):
-        if t < self.t_up:
-            self.phase = "accel"
-            return self.accel * t
-        if t < self.t_hold:
-            self.phase = "hold"
-            return self.speed
-        if t < self.t_end:
-            self.phase = "decel"
-            return self.speed - self.decel * (t - self.t_hold)
-        self.phase = "stop"
-        return None
-
-
 class T3Stop:
-    """Accelerate at `accel` to `speed` and cruise; at odometry `trigger`
-    return None (the stop command). The runner's Steady tracker tells how
-    long the robot held the speed, so a run not at speed at the trigger is flagged."""
+    """As T1 up to `distance` (accelerate at `accel` to `speed`, cruise), but no
+    slow-down: when odometry reads `distance` return None, the sudden stop command. The runner's Steady tracker tells how
+    long the robot held the speed, so a run not at speed at the stop is flagged."""
 
     def __init__(self, p, crawl):
-        self.speed, self.accel, self.trigger = p["speed"], p["accel"], p["trigger"]
-        self.max_distance = self.trigger + p["braking_guard"]
+        self.speed, self.accel, self.stop_at = p["speed"], p["accel"], p["distance"]
+        self.max_distance = self.stop_at + p["braking_guard"]
         self.cmd = 0.0
         self.phase = "accel"
 
     def command(self, t, d, v, dt):
-        if d >= self.trigger:
+        if d >= self.stop_at:
             self.phase = "stop"
             return None
         self.cmd = min(self.speed, self.cmd + self.accel * dt)
@@ -106,7 +80,7 @@ class T3Stop:
         return self.cmd
 
 
-PROFILES = {"T1": T1Straight, "T2": T2Accel, "T3": T3Stop}
+PROFILES = {"T1": Straight, "T2": Straight, "T3": T3Stop}
 
 
 def make(test, params, crawl):
@@ -138,6 +112,6 @@ def plan(test, params, crawl, rate_hz):
            "phases_s": {k: round(s, 2) for k, s in phases.items()},
            "abort_beyond_m": round(prof.max_distance, 2)}
     if test == "T3":
-        out["steady_at_trigger_s"] = round(steady.held(t), 2)
-        out["note"] = "plus the braking distance after the trigger (measured, unknown in advance)"
+        out["steady_at_stop_s"] = round(steady.held(t), 2)
+        out["note"] = "plus the braking distance after the stop command (measured, unknown in advance)"
     return out

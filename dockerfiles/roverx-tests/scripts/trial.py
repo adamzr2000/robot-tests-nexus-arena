@@ -35,8 +35,8 @@ from std_srvs.srv import SetBool
 import profiles
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Space limit for this location (start_roverx_tests.sh --max-travel): runs whose planned
-# distance exceeds it are refused, and odometry beyond it + TRAVEL_MARGIN_M aborts.
+# Space limit for this location (start_roverx_tests.sh --max-travel): runs whose
+# `distance` exceeds it are refused, and odometry beyond it + TRAVEL_MARGIN_M aborts.
 MAX_TRAVEL_M = float(os.environ["MAX_TRAVEL_M"]) if os.environ.get("MAX_TRAVEL_M") else None
 TRAVEL_MARGIN_M = 1.0
 SENSOR_QOS = QoSProfile(depth=100, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -72,13 +72,9 @@ def load_params(test, overrides):
             raise ValueError(f"{key} must be a positive number, got {value}")
     if test == "T3" and params["stop_mode"] not in ("active", "coast"):
         raise ValueError("stop_mode must be 'active' or 'coast'")
-    if MAX_TRAVEL_M is not None:
-        c = cfg["control"]
-        planned = profiles.plan(test, params, c["crawl_speed"], c["rate_hz"])["distance_m"]
-        if planned > MAX_TRAVEL_M + 0.01:  # the plan's last 50 Hz step lands a hair past the target
-            hint = {"T1": "distance", "T2": "speed or hold_s", "T3": "trigger"}[test]
-            raise ValueError(f"planned travel {planned:.2f} m exceeds the max travel {MAX_TRAVEL_M:g} m "
-                             f"set for this location; lower {hint}")
+    if MAX_TRAVEL_M is not None and params["distance"] > MAX_TRAVEL_M:
+        raise ValueError(f"distance {params['distance']:g} m exceeds the max travel {MAX_TRAVEL_M:g} m "
+                         "set for this location; lower distance")
     return cfg, params
 
 
@@ -423,10 +419,9 @@ def metrics(test, params, result, samples, stopping, imu, heading_rad, t0):
     t_slow = next((s[0] for s in samples if s[4] == "decel"), stop["t"] if stop else None)
     if test != "T3":
         imu_mean(m, "slowdown", imu, t0, t_slow, rest.get("t"), base, fwd)
-    if test == "T1":
-        if stop and rest:
-            m["coast_after_stop_m"] = rest["odom_m"] - stop["odom_m"]
-    elif test == "T2":
+    if test in ("T1", "T2") and stop and rest:
+        m["coast_after_stop_m"] = rest["odom_m"] - stop["odom_m"]
+    if test == "T2":
         target = params["speed"]
         t10 = next((s[0] for s in samples if abs(s[2]) >= 0.1 * target), None)
         t90 = next((s[0] for s in samples if abs(s[2]) >= 0.9 * target), None)
@@ -434,10 +429,10 @@ def metrics(test, params, result, samples, stopping, imu, heading_rad, t0):
         m["planned_t90_s"] = 0.9 * target / params["accel"]
         m["accel_measured"] = 0.8 * target / (t90 - t10) if t10 is not None and t90 and t90 > t10 else None
     elif test == "T3" and stop and rest:
-        m["trigger_odom_m"] = stop["odom_m"]
-        m["speed_at_trigger"] = stop["speed_avg"]
+        m["stop_odom_m"] = stop["odom_m"]
+        m["speed_at_stop"] = stop["speed_avg"]
         m["wheels_powered_at_rest"] = rest["wheels_powered"]  # false: power was cut while still braking
-        m["steady_before_trigger_s"] = stop["steady_s"]
+        m["steady_before_stop_s"] = stop["steady_s"]
         m["steady_ok"] = stop["steady_s"] >= params["min_steady_s"]
         m["braking_odom_m"] = rest["odom_m"] - stop["odom_m"]
         m["braking_time_s"] = rest["t"] - stop["t"]  # until confirmed rest (|v| < rest_speed)

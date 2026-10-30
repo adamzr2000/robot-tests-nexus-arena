@@ -1,7 +1,8 @@
 # RoverX 2: changes to the robot's software
 
 What we changed on `roverx2-PC` (192.168.5.2) compared to the manufacturer's
-code, why, and how to undo it. Changed 2026-10-28.
+code, why, and how to undo it. Changed 2026-10-28; driver caps raised out of
+reach 2026-10-29; friction feed-forward off 2026-10-30.
 
 ## How it is deployed
 
@@ -23,7 +24,7 @@ The Docker image and everything outside these folders are unchanged.
 ssh roverx2@192.168.5.2
 rm ~/robot_startup/.env && sudo systemctl restart configura_can     # run the original again
 echo "ROVERX_WS=/home/roverx2/roverx2_ws_v2" > ~/robot_startup/.env && sudo systemctl restart configura_can
-cd ~/roverx2_ws_v2 && git log --oneline && git diff HEAD~2           # every change, as a diff
+cd ~/roverx2_ws_v2 && git log --oneline && git diff 7dc69a7          # every change since the shipped baseline
 ```
 
 `~/roverx2_ws_v2` has git history: the shipped baseline, then one commit per step.
@@ -50,6 +51,8 @@ cd ~/roverx2_ws_v2 && git log --oneline && git diff HEAD~2           # every cha
 `colcon build --packages-select rover_sim_control`)
 - `cmd_timeout` (0.5 s): stops the wheels if `/cmd_vel` goes silent. `<= 0` disables.
 - `max_linear` / `max_angular`: commands are clamped to these. NaN/Inf commands are ignored.
+  Wheel commands are also saturated at ±3000 controller units (~9 m/s real), only so
+  they can't overflow int16 and reverse.
 - `wheel_speed_scale`: real wheel speed / nominal, applied to both commands and
   wheel odometry (1.0 = original behaviour). The original friction feed-forward
   is applied in the original units, so motor behaviour at low speed is unchanged.
@@ -57,10 +60,22 @@ cd ~/roverx2_ws_v2 && git log --oneline && git diff HEAD~2           # every cha
 - All of the above can be changed live with `ros2 param set /smart_rover_driver ...`
   (reset on restart). Original kinematics parameters (`wheel_radius 0.10`) untouched.
 
-**`start.sh`**: the driver starts with the calibration
+**`start.sh`**: the driver starts with the calibration, caps set high on
+purpose (no practical limit; whoever sends `/cmd_vel` decides the speed), and
+the friction feed-forward off
 ```
--p wheel_speed_scale:=0.29 -p track_width:=1.2 -p max_linear:=0.6 -p max_angular:=1.0
+-p wheel_speed_scale:=0.29 -p track_width:=1.2 -p max_linear:=10.0 -p max_angular:=20.0 -p friction_ff:=0.0
 ```
+(Caps 0.6 and 1.0 until 2026-10-29. `friction_ff` 0.04 until 2026-10-30: it was added
+to every non-zero wheel command, so the robot drove +0.0116 m/s faster than
+commanded, +5.8% at 0.2 m/s. The motor controllers already hold speed on their own
+Hall-sensor loop, so commanded and driven speed now match; the floor tests confirm it
+with the measured wheel speed.)
+
+Wheel speed feedback: each motor controller reports at 10 Hz (CAN `0x1801E604`
+front, `0x1801E002` rear); `/odom_raw` is published on every frame (~20 Hz), so the
+speed it carries can be up to 0.1 s old. Distances at rest are unaffected; positions
+during motion trail the real ones by about speed × 0.05 s.
 
 **`src/unilidar_sdk/.../lidar_rover_x/scripts/imu_to_odom_stable.py`**: `/odom`
 position now integrates the measured wheel speed from `/odom_raw` (0 if it goes
@@ -104,4 +119,5 @@ To recalibrate: run `roverx_diag.py straight --speed 0.3 --duration 10`, then
 - When the timeout stops the robot, the wheels stay powered (held at zero) until
   a zero `/cmd_vel` or `/toggle_wheels false`.
 - Commands now mean real speeds: the manufacturer UI's speed values move the
-  robot ~3.5x faster than before, within the 0.6 m/s and 1.0 rad/s caps.
+  robot ~3.5x faster than before, and the driver no longer limits them.
+- Nav2's own limits (above) still apply to Nav2, not to `/cmd_vel` from other senders.

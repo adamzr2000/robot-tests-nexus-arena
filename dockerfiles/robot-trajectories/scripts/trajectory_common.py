@@ -1,5 +1,5 @@
 """Shared helpers for trajectory scripts: flags, robot profiles (see
-robot_profiles.py), safety caps, odometry tracking and the common run loop. Imported by circle_walk.py,
+robot_profiles.py), optional speed caps, odometry tracking and the common run loop. Imported by circle_walk.py,
 square_walk.py, etc.
 """
 import math
@@ -17,13 +17,7 @@ from std_srvs.srv import SetBool
 
 from robot_profiles import NO_PROFILE, ROBOT_PROFILES
 
-# Safety ceilings applied to every trajectory unless the robot profile sets
-# lower ones or they're explicitly raised via --max-linear-speed/
-# --max-angular-speed. Conservative on purpose: there is no obstacle or
-# stability feedback.
-DEFAULT_MAX_LINEAR_SPEED = 1.5   # m/s
-DEFAULT_MAX_ANGULAR_SPEED = 2.0  # rad/s
-MAX_RATE_HZ = 50.0               # sanity cap on publish rate, not a robot limit
+MAX_RATE_HZ = 50.0  # sanity cap on publish rate, not a robot limit
 
 ODOM_WAIT_S = 10.0      # refuse to move if no odometry arrives within this
 ODOM_STALE_S = 1.0      # stop if odometry goes silent mid-run for this long
@@ -50,19 +44,20 @@ def require_positive(flag, value):
 
 
 def check_speed_caps(linear_speed, angular_speed, max_linear_speed, max_angular_speed):
-    if abs(angular_speed) > max_angular_speed:
+    """Caps are opt-in: None means no limit."""
+    if max_angular_speed is not None and abs(angular_speed) > max_angular_speed:
         sys.exit(f"ERROR: angular speed {angular_speed:.3f} rad/s exceeds --max-angular-speed "
-                 f"{max_angular_speed:g}; raise it explicitly if you really mean this")
-    if abs(linear_speed) > max_linear_speed:
+                 f"{max_angular_speed:g}")
+    if max_linear_speed is not None and abs(linear_speed) > max_linear_speed:
         sys.exit(f"ERROR: linear speed {linear_speed:.3f} m/s exceeds --max-linear-speed "
-                 f"{max_linear_speed:g}; raise it explicitly if you really mean this")
+                 f"{max_linear_speed:g}")
 
 
 def add_common_args(parser):
     """Flags shared by every trajectory script: robot profile, stop condition,
-    odometry, rate, topics, ramps, and safety caps."""
+    odometry, rate, topics, ramps, and optional speed caps."""
     parser.add_argument("--robot", choices=sorted(ROBOT_PROFILES), default=None,
-                         help="Robot profile: topics, speed caps and robot preparation "
+                         help="Robot profile: topics and robot preparation "
                               "(see robot_profiles.py)")
     stop_group = parser.add_mutually_exclusive_group()
     stop_group.add_argument("--duration", type=float, default=None,
@@ -83,15 +78,15 @@ def add_common_args(parser):
                               "runs, back to 0 at the end; timed laps are lengthened so the commanded "
                               "distance/angle stays exact (default: 1.0; 0 disables)")
     parser.add_argument("--max-linear-speed", type=float, default=None,
-                         help=f"Safety cap on linear speed in m/s; refuses to run above it unless "
-                              f"raised explicitly (default: from --robot, else {DEFAULT_MAX_LINEAR_SPEED:g})")
+                         help="Optional cap on linear speed in m/s; refuses to run above it "
+                              "(default: no cap)")
     parser.add_argument("--max-angular-speed", type=float, default=None,
-                         help=f"Safety cap on angular speed in rad/s; refuses to run above it unless "
-                              f"raised explicitly (default: from --robot, else {DEFAULT_MAX_ANGULAR_SPEED:g})")
+                         help="Optional cap on angular speed in rad/s; refuses to run above it "
+                              "(default: no cap)")
 
 
 def validate_common_args(args):
-    """Validate shared flags and fill topics and caps from the --robot profile."""
+    """Validate shared flags and fill topics from the --robot profile."""
     require_positive("--rate", args.rate)
     if args.rate > MAX_RATE_HZ:
         sys.exit(f"ERROR: --rate must be <= {MAX_RATE_HZ:g} Hz")
@@ -105,12 +100,10 @@ def validate_common_args(args):
 
     profile = ROBOT_PROFILES[args.robot] if args.robot else NO_PROFILE
     args.profile = profile
-    if args.max_linear_speed is None:
-        args.max_linear_speed = profile.get("max_linear_speed", DEFAULT_MAX_LINEAR_SPEED)
-    if args.max_angular_speed is None:
-        args.max_angular_speed = profile.get("max_angular_speed", DEFAULT_MAX_ANGULAR_SPEED)
-    require_finite("--max-linear-speed", args.max_linear_speed)
-    require_finite("--max-angular-speed", args.max_angular_speed)
+    if args.max_linear_speed is not None:
+        require_positive("--max-linear-speed", args.max_linear_speed)
+    if args.max_angular_speed is not None:
+        require_positive("--max-angular-speed", args.max_angular_speed)
     args.topic = args.topic or profile["cmd_vel"]
     args.odom_topic = args.odom_topic or profile["odom"]
     if not args.topic:

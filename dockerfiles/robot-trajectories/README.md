@@ -33,13 +33,13 @@ curl -X POST localhost:8080/trajectories/square/run \
 
 ## Robot profiles
 
-`"robot"` sets topics, caps, preparation and bag topics (`scripts/robot_profiles.py`).
-Explicit `topic`, `odom_topic` and `max_*_speed` override it.
+`"robot"` sets topics, preparation and bag topics (`scripts/robot_profiles.py`), not
+speed caps. Explicit `topic` and `odom_topic` override it.
 
-| Profile  | Distance              | Heading              | Caps               | Bag topics                                        |
-|----------|-----------------------|----------------------|--------------------|---------------------------------------------------|
-| `go2`    | `/utlidar/robot_odom` | same odometry        | 1.5 m/s, 2.0 rad/s | `/cmd_vel`, `/utlidar/robot_odom`                 |
-| `roverx` | `/odom_raw` (wheels)  | `/unilidar/imu` gyro | 0.6 m/s, 1.0 rad/s | `/cmd_vel`, `/odom_raw`, `/odom`, `/unilidar/imu` |
+| Profile  | Distance              | Heading              | Bag topics                                        |
+|----------|-----------------------|----------------------|---------------------------------------------------|
+| `go2`    | `/utlidar/robot_odom` | same odometry        | `/cmd_vel`, `/utlidar/robot_odom`                 |
+| `roverx` | `/odom_raw` (wheels)  | `/unilidar/imu` gyro | `/cmd_vel`, `/odom_raw`, `/odom`, `/unilidar/imu` |
 
 Both command `/cmd_vel`. `roverx` turns the lidar on (it carries the IMU) and the
 wheel power on before moving, stays still 2 s to measure gyro bias, and cuts
@@ -90,7 +90,8 @@ for 1 s, and stop at 2x the timed estimate if the target isn't reached.
 
 ## Safety
 
-- Refuses speeds above the caps; numeric flags must be finite.
+- No speed caps unless the request sets `max_linear_speed` / `max_angular_speed`
+  (then it is refused above them); numeric flags must be finite.
 - Ramps up over `--ramp-time` (default 1 s), and down at the end of timed runs.
 - On any exit (done, Ctrl+C, `/stop`) sends a zero `Twist` 5 times, then the
   profile's stop services.

@@ -1,0 +1,63 @@
+# RoverX floor test protocol (T1-T3). Units: m, s, m/s, m/s^2.
+# Every test value can be overridden per run through the API (e.g. a shorter
+# "distance" for indoor checks); the run's trial.json records what was used.
+
+robot:
+  cmd_vel: /cmd_vel
+  odom: /odom_raw              # wheel odometry from the driver (measured Hall speed)
+  imu: /unilidar/imu           # 250 Hz, m/s^2; mounted upside down (z points down)
+  imu_z_sign: -1.0             # yaw rate = imu_z_sign * angular_velocity.z
+  imu_forward_deg: 111.0       # robot forward in the IMU x-y plane (speed-up 109-112°, slow-down -68°, 2026-10-30)
+  relay_status: /relay_status
+  driver_node: /smart_rover_driver
+  driver_params: [wheel_speed_scale, track_width, wheel_radius, friction_ff, cmd_timeout, max_linear, max_angular]
+  prepare: [[/toggle_lidar, true], [/toggle_wheels, true]]   # std_srvs/SetBool, in order
+  finish: [[/toggle_wheels, false]]
+
+control:
+  rate_hz: 50                  # /cmd_vel rate; the driver's control loop also runs at 50 Hz
+  settle_s: 2.0                # still after preparation: gyro bias, gravity, clock offset
+  crawl_speed: 0.05            # slowest approach speed (T1), so friction doesn't stall it short
+  rest_speed: 0.01             # |wheel speed| below this counts as stopped
+  rest_hold_s: 0.5             # ... for this long
+  rest_timeout_s: 8.0          # give up waiting for rest after the stop command
+  still_gyro_rad_s: 0.02       # still period: gyro z within this of its mean (rest noise ~1e-5)
+  odom_stale_s: 0.5            # abort if /odom_raw is silent this long (it runs at ~20 Hz)
+  imu_stale_s: 0.5
+  extrapolate_max_s: 0.15      # distance between odom samples: last + speed * age, capped
+  steady_tolerance: 0.05       # at target speed: 1 s average of measured speed within 5%
+  steady_window_s: 1.0         # (single wheel-speed samples jitter ~±10% at 0.2 m/s)
+  response_timeout_s: 1.5      # abort if commanded >= 0.1 m/s this long and the wheels don't move
+
+bag_topics: [/cmd_vel, /odom_raw, /odom, /unilidar/imu, /relay_status, /tf, /tf_static, /trial/events]
+
+tests:
+  T1:
+    name: Straight-line baseline
+    condition: speed           # one run condition per value below
+    values: [0.2, 0.5, 1.0, 1.5]
+    repetitions: 5
+    distance: 8.0              # stop when odometry reads this; tape-measure dx/dy here
+    accel: 0.5                 # same acceleration and deceleration for every speed
+    overshoot_guard: 0.5       # abort if odometry passes distance + this
+
+  T2:
+    name: Acceleration response
+    condition: accel
+    values: [0.2, 0.5, 1.0]
+    repetitions: 5
+    speed: 1.0                 # ramp target
+    hold_s: 2.0                # at target speed before slowing down
+    decel: 0.5                 # controlled slowdown, same for every condition
+    distance_guard: 1.0        # abort if odometry passes the planned distance + this
+
+  T3:
+    name: Stopping response
+    condition: speed
+    values: [0.2, 0.5, 1.0, 1.5]
+    repetitions: 5
+    accel: 0.5                 # approach acceleration
+    trigger: 6.0               # odometry distance of the stop trigger (the marked line)
+    min_steady_s: 1.0          # required time at target speed (control.steady_*) before the trigger
+    stop_mode: active          # active: hold v=0 (controllers brake) | coast: cut wheel power at the trigger
+    braking_guard: 4.0         # abort if odometry passes trigger + this

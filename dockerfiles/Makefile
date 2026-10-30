@@ -8,7 +8,8 @@ IMAGES := \
 	go2-domain-bridge \
 	robot-trajectories \
 	bags-collector \
-	ros-humble-dev
+	ros-humble-dev \
+	roverx-tests
 
 .PHONY: all clean $(IMAGES)
 

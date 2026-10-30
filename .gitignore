@@ -4,4 +4,4 @@
 __pycache__/
 /bags/*
 !/bags/.gitkeep
-*.log
+/results/

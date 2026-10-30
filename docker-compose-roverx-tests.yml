@@ -1,0 +1,22 @@
+# RoverX floor tests (T1-T3): one container with the test API (:8090) and its
+# bag recording, talking straight to the robot's ROS graph (domain 0, FastDDS
+# restricted to one interface). Use ./start_roverx_tests.sh / ./stop_roverx_tests.sh.
+name: roverx-tests
+
+services:
+  roverx-tests:
+    image: roverx-tests:latest
+    container_name: roverx-tests
+    init: true
+    network_mode: host
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - ROS_DOMAIN_ID=${ROVERX_DOMAIN_ID:-0}
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_profile.xml
+      - SESSION=${SESSION:-}
+      - MAX_TRAVEL_M=${MAX_TRAVEL_M:-}
+    volumes:
+      - ./dockerfiles/roverx-tests/scripts:/home/robot/scripts:rw
+      - ./results:/home/robot/results:rw
+      - ./.generated/fastdds_roverx.xml:/fastdds_profile.xml:ro
+    restart: unless-stopped

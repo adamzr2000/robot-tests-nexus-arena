@@ -1,119 +1,100 @@
 # Robot tests
 
-Build images (first time, or after changing a Dockerfile)
+Same trajectories on Go2 and RoverX through one HTTP API (port 8080), with optional bag
+recording. Build the images once (and after changing a Dockerfile):
+
 ```bash
 make -C dockerfiles
 ```
 
-Trajectories run through one HTTP API (port 8080) for both robots; options in
-[dockerfiles/robot-trajectories/README.md](dockerfiles/robot-trajectories/README.md).
-By default they are timed (open loop): both robots get exactly the same command
-stream, 0.3 m/s and 0.3 rad/s, circle and figure-8 radius 1 m, square side 1 m, 1 s ramps at
-start and end (full profile: "Command profile" in the robot-trajectories README). Add
-`"use_odom": true` to measure laps from the robot's own odometry instead.
+## Trajectories
+
+Defaults (identical for both robots):
+
+| Trajectory | Keys and defaults                                     | Forward               | Turn                 | 1 lap (timed) |
+|------------|-------------------------------------------------------|-----------------------|----------------------|---------------|
+| `circle`   | `radius` 1.0 m, `angular_speed` 0.3 rad/s             | 0.3 m/s (r x angular) | 0.3 rad/s            | 21.9 s        |
+| `figure8`  | `radius` 1.0 m, `angular_speed` 0.3 rad/s             | 0.3 m/s (r x angular) | ±0.3 rad/s           | 42.9 s        |
+| `square`   | `side` 1.0 m, `speed` 0.3 m/s, `turn_speed` 0.3 rad/s | 0.3 m/s on sides      | 0.3 rad/s at corners | 35.3 s        |
+
+Common keys: `robot` (`go2` / `roverx`), `laps` or `duration` (s; neither = run until
+`/stop`), `clockwise` false, `use_odom` false, `ramp_time` 1 s, `rate` 10 Hz.
+No speed caps: any speed you request is sent, unless you add `max_linear_speed` /
+`max_angular_speed` to that request.
 
 ```bash
+curl -X POST localhost:8080/trajectories/circle/run  -d '{"robot": "roverx", "laps": 1}' | jq
+curl -X POST localhost:8080/trajectories/square/run  -d '{"robot": "go2", "laps": 1}' | jq
+curl -X POST localhost:8080/trajectories/figure8/run -d '{"robot": "roverx", "laps": 1}' | jq
+
+curl -X POST localhost:8080/trajectories/circle/run \
+     -d '{"robot": "roverx", "radius": 2.0, "angular_speed": 0.4, "laps": 1}' | jq   # 0.8 m/s
+curl -X POST localhost:8080/trajectories/square/run \
+     -d '{"robot": "go2", "side": 2.0, "speed": 0.8, "turn_speed": 0.8, "laps": 1}' | jq
+
 curl -X POST localhost:8080/stop | jq
-curl localhost:8080/status | jq
+curl localhost:8080/status | jq                  # last.exit_code 0 = completed
 docker logs --tail 20 robot-trajectories
 ```
 
-Custom speeds (request keys; defaults apply when omitted)
-- circle, figure8: `radius` (m) and `angular_speed` (rad/s); forward speed = radius x angular_speed
-- square: `side` (m), `speed` (m/s, straight sides), `turn_speed` (rad/s, corners)
-```bash
-curl -X POST localhost:8080/trajectories/circle/run \
-     -d '{"robot": "roverx", "radius": 2.0, "angular_speed": 0.25, "laps": 1}' | jq   # 0.5 m/s
-curl -X POST localhost:8080/trajectories/square/run \
-     -d '{"robot": "go2", "side": 2.0, "speed": 0.5, "turn_speed": 0.5, "laps": 1}' | jq
-```
-Above the caps (RoverX 0.6 m/s, 1.0 rad/s; Go2 1.5 m/s, 2.0 rad/s) a request is refused
-unless it raises them with `"max_linear_speed"` / `"max_angular_speed"`. On RoverX, also
-raise the robot driver's cap (see "Speed caps" below) or it clamps at 0.6 m/s.
+- **Timed (default)**: open loop, so both robots get exactly the same `/cmd_vel` stream.
+- **`"use_odom": true`**: laps, sides and corners are measured from the robot's odometry.
+- **`"record_bag": true, "tag": "exp1"`**: records that run's commands and pose estimates to
+  `bags/<time>_<robot>_<trajectory>_exp1`.
 
-Bag recording: off unless a request sets `"record_bag": true`. It records only that run's
-commands and pose estimates, to `bags/<time>_<robot>_<trajectory>_<tag>`.
-```bash
-curl -X POST localhost:8080/trajectories/circle/run \
-     -d '{"robot": "roverx", "laps": 1, "record_bag": true, "tag": "grass_rep1"}' | jq
-```
+Details (command profile, lap logic, adding a trajectory):
+[dockerfiles/robot-trajectories/README.md](dockerfiles/robot-trajectories/README.md).
 
 ## Go2
 
-Network: robot PC is `192.168.123.161`
+Robot PC `192.168.123.161`, ROS domain 0, CycloneDDS. Locally, everything runs on domain 10
+through `go2-domain-bridge`. Below, `eno1` is the laptop port wired to the Go2.
+
 ```bash
 sudo ip addr flush dev eno1 && sudo ip addr add 192.168.123.51/24 dev eno1
-```
-
-Stack
-```bash
-./start_go2.sh   # optional: --robot-iface eno1 (wired to the Go2) --iface lo (local DDS)
+./start_go2.sh --robot-iface eno1
 ./stop_go2.sh
-```
-
-Teleop
-```bash
-./run_ros_dev.sh --ros-domain-id 10 /scripts/teleop.sh   # optional: --speed 0.3 --turn 0.5
-```
-
-Trajectories
-```bash
-curl -X POST localhost:8080/trajectories/circle/run -d '{"robot": "go2", "laps": 1}' | jq
-curl -X POST localhost:8080/trajectories/square/run -d '{"robot": "go2", "laps": 1}' | jq
-curl -X POST localhost:8080/trajectories/figure8/run -d '{"robot": "go2", "laps": 1}' | jq
-curl -X POST localhost:8080/trajectories/circle/run \
-     -d '{"robot": "go2", "radius": 1.0, "angular_speed": 0.3, "duration": 30, "clockwise": true}' | jq
+./run_ros_dev.sh --ros-domain-id 10 /scripts/teleop.sh   # --speed 0.3 --turn 0.5
 ```
 
 ## RoverX
 
-Network: robot PC is `192.168.5.2` (ROS domain 0, FastDDS)
-```bash
-sudo ip addr flush dev eno1 && sudo ip addr add 192.168.5.51/24 dev eno1
-```
+Robot PC `192.168.5.2` (`ssh roverx2@192.168.5.2`), ROS domain 0, FastDDS. Below,
+`enp3s0` is the laptop port wired to the RoverX.
 
-Stack
 ```bash
-./start_roverx.sh   # optional: --iface eno1 --ros-domain-id 0
+sudo ip addr flush dev enp3s0 && sudo ip addr add 192.168.5.51/24 dev enp3s0
+./start_roverx.sh --iface enp3s0
 ./stop_roverx.sh
 ```
 
-Trajectories: same requests with `"robot": "roverx"`. Each run first turns the lidar on
-and powers the wheels (~3-6 s, before the timed motion starts) and cuts wheel power at
-the end. Caps: 0.6 m/s, 1.0 rad/s. Prefer radius >= 1 m: tighter circles make the inner
-wheels stop or reverse (skid-steer).
+Each run turns the lidar on (it carries the IMU used for heading) and powers the wheels,
+then stays still for 2 s. All of this happens before the timed motion starts, about 3-6 s
+in total. Wheel power is cut at the end. Keep the radius at 1 m or more: tighter circles
+make the inner wheels stop or reverse (skid-steer).
+
+Floor test protocol (T1 straight-line baseline, T2 acceleration, T3 stopping) runs in its own
+stack, `./start_roverx_tests.sh` (API on :8090, stop this one first):
+[dockerfiles/roverx-tests/README.md](dockerfiles/roverx-tests/README.md).
+
+Dev shell, teleop, motion diagnostic (scripts mounted at `/scripts`):
+
 ```bash
-curl -X POST localhost:8080/trajectories/circle/run -d '{"robot": "roverx", "laps": 1}' | jq
-curl -X POST localhost:8080/trajectories/square/run -d '{"robot": "roverx", "laps": 1}' | jq
-curl -X POST localhost:8080/trajectories/figure8/run -d '{"robot": "roverx", "laps": 1}' | jq
+./run_ros_dev.sh --dds fast --iface enp3s0 --ros-domain-id 0
+./run_ros_dev.sh --dds fast --iface enp3s0 --ros-domain-id 0 /scripts/roverx_teleop.sh   # --speed 0.15 --turn 0.4
+./run_ros_dev.sh --dds fast --iface enp3s0 --ros-domain-id 0 /scripts/roverx_diag.py straight   # or: spin
 ```
 
-Dev shell, teleop and motion diagnostic (scripts in
-[dockerfiles/ros-humble-dev/scripts](dockerfiles/ros-humble-dev/scripts), mounted at `/scripts`)
-```bash
-./run_ros_dev.sh --dds fast --iface eno1 --ros-domain-id 0
-./run_ros_dev.sh --dds fast --iface eno1 --ros-domain-id 0 /scripts/roverx_teleop.sh   # --speed 0.15 --turn 0.4
-./run_ros_dev.sh --dds fast --iface eno1 --ros-domain-id 0 /scripts/roverx_diag.py straight   # or: spin
-```
-Use `roverx_teleop.sh`, not `teleop.sh`: the robot stops after 0.5 s without `/cmd_vel`,
-so it repeats the current key and keeps the wheels powered. Ctrl+C stops and cuts power.
+Use `roverx_teleop.sh`, not `teleop.sh`. The robot stops after 0.5 s without `/cmd_vel`,
+so this script keeps repeating the current key. Ctrl+C stops the robot and cuts wheel power.
 
-Speed caps. The robot driver caps commands at 0.6 m/s and 1.0 rad/s; the trajectory API
-also refuses requests above each profile's caps (Go2 1.5 m/s, 2.0 rad/s).
-```bash
-/scripts/roverx_teleop.sh --max-linear 1.5 --max-angular 2.0        # raises driver caps until you quit
-ros2 param set /smart_rover_driver max_linear 1.5                   # or by hand, until the robot restarts
-curl ... -d '{"robot": "roverx", ..., "max_linear_speed": 1.5, "max_angular_speed": 2.0}'   # trajectory caps
-```
+Manual services (lidar is in standby after every boot):
 
-Services (from the dev shell). The lidar starts in standby at every boot.
 ```bash
+ros2 service call /toggle_lidar  std_srvs/srv/SetBool "{data: true}"
 ros2 service call /toggle_wheels std_srvs/srv/SetBool "{data: true}"   # false cuts power
-ros2 service call /toggle_lidar std_srvs/srv/SetBool "{data: true}"
 ```
 
-### Robot-side changes
-
-The robot runs a patched, calibrated copy of its workspace (0.5 s command timeout, real
-m/s and rad/s, measured `/odom`). What changed, why, and how to revert:
-[docs/roverx2-robot-changes.md](docs/roverx2-robot-changes.md).
+The robot runs a patched copy of its workspace: real m/s and rad/s, a 0.5 s command timeout,
+measured `/odom`, and driver speed limits set out of reach (10 m/s, 20 rad/s). What changed
+and how to revert: [docs/roverx2-robot-changes.md](docs/roverx2-robot-changes.md).

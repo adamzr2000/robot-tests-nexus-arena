@@ -1,9 +1,12 @@
 """Speed profiles for the RoverX floor tests, free of ROS so they can be dry-run.
 
-A profile is asked for a forward speed command every control period with the
-current state (time since motion start, odometry distance, measured speed) and
-returns None when its motion is over; the runner then holds v=0 until the robot
-is at rest. `phase` names what the profile is doing, for logs and metrics.
+A profile is asked for a command every control period with the current state
+(time since motion start, progress, measured speed) and returns None when its
+motion is over; the runner then holds zero until the robot is at rest. For the
+straight tests the command is forward speed (m/s) and progress the odometry
+distance (m); for T4 (`angular = True`) the command is the turn rate (rad/s,
+signed) and progress the heading turned in that direction (rad, IMU).
+`speed` is the target magnitude; `phase` names what the profile is doing.
 """
 import math
 from collections import deque
@@ -34,6 +37,7 @@ class Straight:
     """T1 and T2: accelerate at `accel` to `speed`, cruise, then decelerate at
     `decel` (T1: same as accel) down to a crawl, and stop when odometry reads
     `distance`."""
+    angular = False
 
     def __init__(self, p, crawl):
         self.speed, self.accel, self.distance = p["speed"], p["accel"], p["distance"]
@@ -62,8 +66,10 @@ class Straight:
 
 class T3Stop:
     """As T1 up to `distance` (accelerate at `accel` to `speed`, cruise), but no
-    slow-down: when odometry reads `distance` return None, the sudden stop command. The runner's Steady tracker tells how
-    long the robot held the speed, so a run not at speed at the stop is flagged."""
+    slow-down: when odometry reads `distance` return None, the sudden stop command.
+    The runner's Steady tracker tells how long the robot held the speed, so a run
+    not at speed at the stop is flagged."""
+    angular = False
 
     def __init__(self, p, crawl):
         self.speed, self.accel, self.stop_at = p["speed"], p["accel"], p["distance"]
@@ -80,7 +86,30 @@ class T3Stop:
         return self.cmd
 
 
-PROFILES = {"T1": Straight, "T2": Straight, "T3": T3Stop}
+class T4Rotate:
+    """In place (v = 0): ramp the turn rate at `ang_accel` to `yaw_rate` (signed,
+    + counter-clockwise), hold it, and when the heading has turned `angle_deg`
+    return None, the stop command (v = 0, w = 0 at once; the overshoot is measured)."""
+    angular = True
+
+    def __init__(self, p, crawl):
+        self.rate, self.accel = p["yaw_rate"], p["ang_accel"]
+        self.speed = abs(self.rate)
+        self.stop_at = math.radians(p["angle_deg"])
+        self.max_distance = self.stop_at + math.radians(p["heading_guard_deg"])
+        self.cmd = 0.0
+        self.phase = "accel"
+
+    def command(self, t, d, v, dt):
+        if d >= self.stop_at:
+            self.phase = "stop"
+            return None
+        self.cmd = min(self.speed, self.cmd + self.accel * dt)
+        self.phase = "cruise" if self.cmd >= self.speed else "accel"
+        return math.copysign(self.cmd, self.rate)
+
+
+PROFILES = {"T1": Straight, "T2": Straight, "T3": T3Stop, "T4": T4Rotate}
 
 
 def make(test, params, crawl):
@@ -95,19 +124,24 @@ def plan(test, params, crawl, rate_hz):
     dt = 1.0 / rate_hz
     t = d = v = top = 0.0
     phases = {}
-    steady = Steady(params["speed"], 0.05, 1)
+    steady = Steady(prof.speed, 0.05, 1)
     while True:
         steady.update(t, v)
         cmd = prof.command(t, d, v, dt)
         if cmd is None:
             break
         phases[prof.phase] = phases.get(prof.phase, 0.0) + dt
-        v = cmd
+        v = abs(cmd)
         top = max(top, v)
         d += v * dt
         t += dt
         if t > 600:
             raise ValueError("profile does not end within 600 s")
+    if prof.angular:
+        return {"motion_s": round(t, 2), "angle_deg": round(math.degrees(d), 1), "top_rate": round(top, 3),
+                "phases_s": {k: round(s, 2) for k, s in phases.items()},
+                "abort_beyond_deg": round(math.degrees(prof.max_distance), 1),
+                "note": "plus the overshoot after the stop command (measured)"}
     out = {"motion_s": round(t, 2), "distance_m": round(d, 3), "top_speed": round(top, 3),
            "phases_s": {k: round(s, 2) for k, s in phases.items()},
            "abort_beyond_m": round(prof.max_distance, 2)}

@@ -1,7 +1,7 @@
 *:Zone.Identifier
-/roverx-source/
 /.generated/
 __pycache__/
 /bags/*
 !/bags/.gitkeep
 /results/
+/roverx-source/

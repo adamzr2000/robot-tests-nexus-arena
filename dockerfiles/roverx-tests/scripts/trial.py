@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Run one RoverX floor-test trial (T1/T2/T3) and write its trial.json.
+"""Run one RoverX floor-test trial (T1-T4) and write its trial.json.
 
   python3 trial.py --test T1 --set speed=0.5 [--set distance=3] --out DIR [--id ID]
 
 Sequence: prepare the robot (lidar on, wheels powered), stay still settle_s
 (gyro bias, gravity, robot-laptop clock offset), drive the profile at rate_hz,
-then hold v=0 until the wheels report rest, cut wheel power and write results.
+then hold zero until the robot is at rest, cut wheel power and write results.
 Prints a live line every 0.2 s. Ctrl+C / SIGTERM stops the robot the same way
 (status ABORTED). Normally started by api.py, which also records the bag.
 """
@@ -44,6 +44,8 @@ PRINT_PERIOD_S = 0.2
 WAIT_DATA_S = 10.0
 SERVICE_WAIT_S = 15.0
 SERVICE_TIMEOUT_S = 10.0  # turning the lidar on takes ~4.5 s
+SIGNED = {"yaw_rate"}      # condition values that may be negative (direction)
+WRONG_WAY_RAD = math.radians(5)  # T4: heading this far against the command = wrong IMU sign
 
 
 class Abort(Exception):
@@ -68,19 +70,21 @@ def load_params(test, overrides):
     if params[cond] is None:
         raise ValueError(f"{test} needs its condition: {cond}=<value>")
     for key, value in params.items():
-        if isinstance(value, (int, float)) and not (math.isfinite(value) and value > 0):
-            raise ValueError(f"{key} must be a positive number, got {value}")
+        if isinstance(value, (int, float)):
+            ok = math.isfinite(value) and (value != 0 if key in SIGNED else value > 0)
+            if not ok:
+                raise ValueError(f"{key} must be a {'non-zero' if key in SIGNED else 'positive'} number, got {value}")
     if test == "T3" and params["stop_mode"] not in ("active", "coast"):
         raise ValueError("stop_mode must be 'active' or 'coast'")
-    if MAX_TRAVEL_M is not None and params["distance"] > MAX_TRAVEL_M:
+    if MAX_TRAVEL_M is not None and params.get("distance", 0) > MAX_TRAVEL_M:
         raise ValueError(f"distance {params['distance']:g} m exceeds the max travel {MAX_TRAVEL_M:g} m "
                          "set for this location; lower distance")
     return cfg, params
 
 
 class Rover(Node):
-    """Robot interface: odometry (with extrapolated distance), IMU samples,
-    relay status, /cmd_vel and /trial/events publishers, SetBool services."""
+    """Robot interface: odometry (with extrapolated distance and unwrapped yaw), IMU
+    samples and heading, relay status, /cmd_vel and /trial/events, SetBool services."""
 
     def __init__(self, cfg):
         super().__init__("roverx_trial")
@@ -90,6 +94,8 @@ class Rover(Node):
         self.cmd_pub = self.create_publisher(Twist, r["cmd_vel"], 10)
         self.event_pub = self.create_publisher(String, "/trial/events", 10)
         self.odom = None            # (x, y, v, monotonic rx time)
+        self.odom_yaw = 0.0         # unwrapped wheel-odometry yaw (rad)
+        self._last_odom_yaw = None
         self.stamp_offsets = []     # robot header stamp - laptop receive time
         self.imu = []               # (monotonic, ax, ay, az, gz, IMU stamp)
         self.odom_speeds = []       # every wheel speed received (stillness check)
@@ -97,16 +103,20 @@ class Rover(Node):
         self.relays = None
         self.origin = None
         self.gz_bias = None         # set after settling; then heading integrates
-        self.heading = 0.0          # rad since the bias was set
+        self.heading = 0.0          # rad since the bias was set (+ counter-clockwise)
         self._pending = []          # fire-and-forget service calls
         self.create_subscription(Odometry, r["odom"], self._on_odom, SENSOR_QOS)
         self.create_subscription(Imu, r["imu"], self._on_imu, SENSOR_QOS)
         self.create_subscription(Bool, r["relay_status"], lambda m: setattr(self, "relays", m.data), 10)
 
     def _on_odom(self, m):
-        p = m.pose.pose.position
+        p, q = m.pose.pose.position, m.pose.pose.orientation
         self.odom = (p.x, p.y, m.twist.twist.linear.x, time.monotonic())
         self.odom_speeds.append(m.twist.twist.linear.x)
+        yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+        if self._last_odom_yaw is not None:
+            self.odom_yaw += math.atan2(math.sin(yaw - self._last_odom_yaw), math.cos(yaw - self._last_odom_yaw))
+        self._last_odom_yaw = yaw
         stamp = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
         self.stamp_offsets.append(stamp - time.time())
 
@@ -124,6 +134,10 @@ class Rover(Node):
     def speed(self):
         return self.odom[2]
 
+    def yaw_rate(self):
+        """Latest IMU yaw rate (rad/s, + counter-clockwise), gyro bias removed."""
+        return self.imu[-1][4] - (self.gz_bias or 0.0) if self.imu else 0.0
+
     def distance(self, extrapolate=True):
         """Straight-line distance from the motion start, extrapolated between
         odometry samples (~20 Hz) with the measured speed."""
@@ -139,9 +153,10 @@ class Rover(Node):
     def imu_age(self):
         return time.monotonic() - self.imu_rx
 
-    def send(self, v):
+    def send(self, v, w=0.0):
         msg = Twist()
         msg.linear.x = float(v)
+        msg.angular.z = float(w)
         self.cmd_pub.publish(msg)
 
     def event(self, name, **data):
@@ -201,14 +216,19 @@ def run(cfg, test, params, result, out_dir, verbose=True):
     node = Rover(cfg)
     log = (lambda s: print(s, flush=True)) if verbose else (lambda s: None)
     prof = profiles.make(test, params, c["crawl_speed"])
-    if MAX_TRAVEL_M is not None:
+    angular = prof.angular
+    sign = math.copysign(1.0, params["yaw_rate"]) if angular else 1.0
+    if MAX_TRAVEL_M is not None and not angular:
         prof.max_distance = min(prof.max_distance, MAX_TRAVEL_M + TRAVEL_MARGIN_M)
     result["max_travel_m"] = MAX_TRAVEL_M
     result["imu_forward_deg"] = r["imu_forward_deg"]
     deadline = 2 * profiles.plan(test, params, c["crawl_speed"], c["rate_hz"])["motion_s"] + 5
     period = 1.0 / c["rate_hz"]
-    steady = profiles.Steady(params["speed"], c["steady_tolerance"], round(c["steady_window_s"] * c["rate_hz"]))
-    samples = []        # (t, cmd, v, d, phase, at target speed)
+    target = prof.speed  # m/s, or rad/s for T4
+    steady = profiles.Steady(target, c["steady_tolerance"], round(c["steady_window_s"] * c["rate_hz"]))
+    # (t, cmd, measured, progress, phase, at target, wheel speed, yaw rate, heading, odometry distance):
+    # straight tests: cmd/measured in m/s, progress = distance; T4: rad/s and heading turned (rad)
+    samples = []
     events = result["events"]
     moving = False
     try:
@@ -245,12 +265,16 @@ def run(cfg, test, params, result, out_dir, verbose=True):
 
         # --- motion --------------------------------------------------------
         node.origin = node.odom[:2]
+        odom_yaw0 = node.odom_yaw
         node.imu.clear()
         node.gz_bias = result["rest"]["gz_bias"]
         t0 = time.monotonic()
         events.append(node.event("motion_start"))
         moving = True
-        log(f"{'time':>6} {'phase':<7} {'cmd':>6} {'wheels':>7} {'odom':>8} {'heading':>9}")
+        if angular:
+            log(f"{'time':>6} {'phase':<7} {'cmd':>11} {'imu rate':>11} {'heading':>9} {'drift':>8}")
+        else:
+            log(f"{'time':>6} {'phase':<7} {'cmd':>6} {'wheels':>7} {'odom':>8} {'heading':>9}")
         next_tick = next_print = t0
         cmd, unresponsive_since = 0.0, None
         while True:
@@ -259,36 +283,52 @@ def run(cfg, test, params, result, out_dir, verbose=True):
             if now < next_tick:
                 continue
             next_tick = max(next_tick + period, now)  # never burst to catch up
-            t, d, v = now - t0, node.distance(), node.speed()
+            t, d_lin, v, w = now - t0, node.distance(), node.speed(), node.yaw_rate()
+            measured, progress = (w, sign * node.heading) if angular else (v, d_lin)
             if node.odom_age() > c["odom_stale_s"]:
                 raise Abort(f"odometry silent for {node.odom_age():.2f}s")
             if node.imu_age() > c["imu_stale_s"]:
                 raise Abort(f"IMU silent for {node.imu_age():.2f}s")
-            if d > prof.max_distance:
-                raise Abort(f"odometry {d:.2f} m beyond the guard {prof.max_distance:.2f} m")
             if t > deadline:
                 raise Abort(f"still running after {deadline:.0f}s")
-            if cmd >= 0.1 and abs(v) < 0.02:  # last command was clearly moving, wheels aren't
+            if angular:
+                if progress > prof.max_distance:
+                    raise Abort(f"turned {math.degrees(progress):.0f} deg, beyond the guard "
+                                f"{math.degrees(prof.max_distance):.0f} deg")
+                if d_lin > params["drift_guard"]:
+                    raise Abort(f"centre moved {d_lin:.2f} m (wheel odometry), beyond the guard {params['drift_guard']:g} m")
+                if progress < -WRONG_WAY_RAD:
+                    raise Abort(f"IMU heading turns against the command ({math.degrees(progress):+.0f} deg): "
+                                "check robot.imu_z_sign")
+            elif d_lin > prof.max_distance:
+                raise Abort(f"odometry {d_lin:.2f} m beyond the guard {prof.max_distance:.2f} m")
+            if abs(cmd) >= 0.1 and abs(measured) < 0.02:  # last command clearly moving, robot isn't
                 unresponsive_since = unresponsive_since if unresponsive_since is not None else t
                 if t - unresponsive_since > c["response_timeout_s"]:
-                    raise Abort(f"wheels not responding: commanded {cmd:.2f} m/s, measured {v:+.3f} m/s")
+                    unit = "rad/s" if angular else "m/s"
+                    raise Abort(f"robot not responding: commanded {cmd:+.2f} {unit}, measured {measured:+.3f} {unit}")
             else:
                 unresponsive_since = None
-            at_speed = steady.update(t, v)
-            if ("time_to_speed_s" not in result["metrics"]
-                    and abs(abs(v) - params["speed"]) <= c["steady_tolerance"] * params["speed"]):
+            at_speed = steady.update(t, measured)
+            if ("time_to_speed_s" not in result["metrics"] and not angular
+                    and abs(abs(measured) - target) <= c["steady_tolerance"] * target):
                 result["metrics"]["time_to_speed_s"] = t  # first measured sample within the band
-            cmd = prof.command(t, d, v, period)
+            cmd = prof.command(t, progress, measured, period)
             if cmd is None:
                 break
-            node.send(cmd)
-            samples.append((t, cmd, v, d, prof.phase, at_speed))
+            node.send(0.0, cmd) if angular else node.send(cmd)
+            samples.append((t, cmd, measured, progress, prof.phase, at_speed, v, w, node.heading, d_lin))
             if now >= next_print:
                 next_print += PRINT_PERIOD_S
-                log(f"{t:5.1f}s {prof.phase:<7} {cmd:+.3f} {v:+.3f}  {d:6.3f} m "
-                    f"{math.degrees(node.heading):+6.1f} deg{'  at speed' if at_speed else ''}")
+                if angular:
+                    log(f"{t:5.1f}s {prof.phase:<7} {cmd:+.3f} rad/s {w:+.3f} rad/s "
+                        f"{math.degrees(node.heading):+6.1f} deg {d_lin:5.3f} m")
+                else:
+                    log(f"{t:5.1f}s {prof.phase:<7} {cmd:+.3f} {v:+.3f}  {d_lin:6.3f} m "
+                        f"{math.degrees(node.heading):+6.1f} deg{'  at speed' if at_speed else ''}")
         node.send(0.0)
-        stop = {"t": time.monotonic() - t0, "odom_m": node.distance(), "speed": node.speed()}
+        stop = {"t": time.monotonic() - t0, "odom_m": node.distance(), "speed": node.speed(),
+                "heading_deg": math.degrees(node.heading), "yaw_rate": node.yaw_rate()}
         if test == "T3":
             stop["steady_s"] = steady.held(stop["t"])
             stop["speed_avg"] = sum(steady.recent) / len(steady.recent)  # last 1 s, not one jittery sample
@@ -297,7 +337,11 @@ def run(cfg, test, params, result, out_dir, verbose=True):
                 node.request_bool(r["finish"][0][0], False)  # cut wheel power now; zeros keep going
         events.append(node.event("stop_command", **stop))
         result["stop_command"] = stop
-        log(f"Stop command at {stop['t']:.2f}s, odometry {stop['odom_m']:.3f} m, wheels {stop['speed']:+.3f} m/s")
+        if angular:
+            log(f"Stop command at {stop['t']:.2f}s, heading {stop['heading_deg']:+.1f} deg, "
+                f"rate {stop['yaw_rate']:+.3f} rad/s")
+        else:
+            log(f"Stop command at {stop['t']:.2f}s, odometry {stop['odom_m']:.3f} m, wheels {stop['speed']:+.3f} m/s")
         result["status"] = "DONE"
     except (Abort, KeyboardInterrupt, Exception) as exc:
         if isinstance(exc, Abort):
@@ -312,16 +356,19 @@ def run(cfg, test, params, result, out_dir, verbose=True):
     finally:
         try:
             if moving:
-                stopping = []  # (t, odometry, wheel speed) while v=0 is held
+                stopping = []  # (t, odometry, wheel speed, yaw rate, heading) while zero is held
                 at_rest, still_since = hold_until_rest(node, c, period, t0, stopping)
                 t_rest = (still_since if at_rest else time.monotonic()) - t0
                 result["rest_after"] = {"t": t_rest, "odom_m": node.distance(extrapolate=False), "at_rest": at_rest,
-                                        "wheels_powered": bool(node.relays)}
+                                        "wheels_powered": bool(node.relays),
+                                        "heading_deg": math.degrees(node.heading),
+                                        "odom_heading_deg": math.degrees(node.odom_yaw - odom_yaw0)}
                 events.append(node.event("at_rest", **result["rest_after"]))
-                log(f"At rest at {t_rest:.2f}s: odometry {result['rest_after']['odom_m']:.3f} m"
+                log(f"At rest at {t_rest:.2f}s: odometry {result['rest_after']['odom_m']:.3f} m, "
+                    f"heading {result['rest_after']['heading_deg']:+.1f} deg"
                     + ("" if at_rest else " (rest NOT confirmed)"))
                 metrics(test, params, result, samples, stopping, node.imu, node.heading, t0)
-                write_samples(out_dir, samples, stopping)
+                write_samples(out_dir, samples, stopping, angular)
         finally:
             for name, value in r["finish"]:
                 ok, msg = node.set_bool(name, value)
@@ -330,16 +377,17 @@ def run(cfg, test, params, result, out_dir, verbose=True):
 
 
 def hold_until_rest(node, c, period, t0, stopping):
-    """Publish v=0 at the control rate until the wheels report rest for rest_hold_s,
-    appending (t, odometry, wheel speed) to `stopping`. Returns (confirmed, monotonic
-    time the stillness began)."""
+    """Publish zero at the control rate until the wheels report rest and the IMU
+    no turning, for rest_hold_s, appending (t, odometry, wheel speed, yaw rate,
+    heading) to `stopping`. Returns (confirmed, monotonic time the stillness began)."""
     end = time.monotonic() + c["rest_timeout_s"]
     still_since = None
     while time.monotonic() < end:
         node.send(0.0)
         node.spin_for(period)
-        stopping.append((time.monotonic() - t0, node.distance(extrapolate=False), node.speed()))
-        if abs(node.speed()) < c["rest_speed"]:
+        stopping.append((time.monotonic() - t0, node.distance(extrapolate=False), node.speed(),
+                         node.yaw_rate(), node.heading))
+        if abs(node.speed()) < c["rest_speed"] and abs(node.yaw_rate()) < c["rest_yaw_rate"]:
             still_since = still_since or time.monotonic()
             if time.monotonic() - still_since >= c["rest_hold_s"]:
                 return True, still_since
@@ -348,17 +396,20 @@ def hold_until_rest(node, c, period, t0, stopping):
     return False, None
 
 
-def write_samples(out_dir, samples, stopping):
-    """The controller's own log at the control rate, for analysis without ROS tools:
-    commanded and measured speed, odometry distance, phase. 'stopping' = v=0 held
-    until rest (the T3 braking, the end of T1/T2)."""
+def write_samples(out_dir, samples, stopping, angular):
+    """The controller's own log at the control rate, for analysis without ROS tools.
+    'stopping' = zero held until rest (the T3 braking, the end of every test)."""
     with open(os.path.join(out_dir, "samples.csv"), "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["t_s", "phase", "cmd_mps", "wheel_speed_mps", "odom_m", "at_speed"])
-        for t, cmd, v, d, phase, at_speed in samples:
-            w.writerow([f"{t:.3f}", phase, f"{cmd:.4f}", f"{v:.4f}", f"{d:.4f}", int(at_speed)])
-        for t, d, v in stopping:
-            w.writerow([f"{t:.3f}", "stopping", "0.0000", f"{v:.4f}", f"{d:.4f}", 0])
+        w.writerow(["t_s", "phase", "cmd_linear_mps", "cmd_angular_rad_s", "wheel_speed_mps",
+                    "imu_yaw_rate_rad_s", "heading_deg", "odom_m", "at_target"])
+        for t, cmd, _, _, phase, at_speed, v, yr, heading, d in samples:
+            lin, ang = (0.0, cmd) if angular else (cmd, 0.0)
+            w.writerow([f"{t:.3f}", phase, f"{lin:.4f}", f"{ang:.4f}", f"{v:.4f}", f"{yr:.4f}",
+                        f"{math.degrees(heading):.2f}", f"{d:.4f}", int(at_speed)])
+        for t, d, v, yr, heading in stopping:
+            w.writerow([f"{t:.3f}", "stopping", "0.0000", "0.0000", f"{v:.4f}", f"{yr:.4f}",
+                        f"{math.degrees(heading):.2f}", f"{d:.4f}", 0])
 
 
 def imu_mean(m, name, imu, t0, start, end, base, forward_deg):
@@ -403,15 +454,18 @@ def speed_held(samples, target, c):
 def metrics(test, params, result, samples, stopping, imu, heading_rad, t0):
     m = result["metrics"]
     rest = result.get("rest_after", {})
+    stop = result.get("stop_command")
     m["motion_time_s"] = rest.get("t")
+    m["heading_change_deg"] = math.degrees(heading_rad)
+    if test == "T4":
+        rotation_metrics(params, result, samples, stop, rest)
+        return
     m["odom_end_m"] = rest.get("odom_m")
     m["max_speed"] = max((abs(s[2]) for s in samples), default=None)
     m.setdefault("time_to_speed_s", None)  # set during the run when first at target speed
     held = speed_held(samples, params["speed"], result["control"])
     m["speed_held_mean"] = statistics.fmean(held) if held else None  # measured, only while at target
     m["speed_held_s"] = len(held) / result["control"]["rate_hz"]
-    m["heading_change_deg"] = math.degrees(heading_rad)
-    stop = result.get("stop_command")
     base = result["rest"]["accel_mean"]
     fwd = result["imu_forward_deg"]
     # speed-up: motion start until measured at speed; slow-down: first slow-down command until rest
@@ -442,9 +496,38 @@ def metrics(test, params, result, samples, stopping, imu, heading_rad, t0):
         imu_mean(m, "braking", imu, t0, stop["t"], rest["t"], base, fwd)
 
 
+def rotation_metrics(params, result, samples, stop, rest):
+    """T4. The robot turns at whatever rate it achieves (skid-steer scrub: below the
+    command), so the rate is reported as achieved, not judged against the command."""
+    m = result["metrics"]
+    sign = math.copysign(1.0, params["yaw_rate"])
+    rates = [s[2] for s in samples]
+    m["yaw_rate_peak"] = max(rates, key=abs, default=None)  # IMU, signed
+    # cruise: commanded at the full rate, after the robot's response settles (first 0.5 s left out)
+    cruise = [s for s in samples if s[4] == "cruise"]
+    settled = [s[2] for s in cruise if s[0] >= cruise[0][0] + 0.5] if cruise else []
+    m["yaw_rate_cruise_mean"] = statistics.fmean(settled) if settled else None
+    m["yaw_rate_cruise_s"] = len(settled) / result["control"]["rate_hz"]
+    if settled:
+        m["yaw_rate_cruise_std"] = statistics.pstdev(settled)
+        m["yaw_rate_ratio"] = m["yaw_rate_cruise_mean"] / params["yaw_rate"]  # achieved / commanded
+        t90 = next((s[0] for s in samples if sign * s[2] >= 0.9 * abs(m["yaw_rate_cruise_mean"])), None)
+        m["time_to_rate_s"] = t90  # until 90 % of the achieved rate
+    if stop and rest:
+        m["heading_at_stop_deg"] = stop["heading_deg"]
+        m["heading_final_deg"] = rest["heading_deg"]
+        m["overshoot_deg"] = sign * rest["heading_deg"] - params["angle_deg"]
+        m["coast_after_stop_deg"] = sign * (rest["heading_deg"] - stop["heading_deg"])
+        m["stop_time_s"] = rest["t"] - stop["t"]
+        m["odom_heading_change_deg"] = rest["odom_heading_deg"]  # wheels (slip-calibrated track width)
+        if rest["heading_deg"]:
+            m["wheel_imu_heading_ratio"] = rest["odom_heading_deg"] / rest["heading_deg"]
+        m["center_drift_odom_m"] = rest["odom_m"]  # wheel odometry: ~0 by construction (sides opposite); real drift = tape
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--test", required=True, help="T1, T2 or T3")
+    ap.add_argument("--test", required=True, help="T1, T2, T3 or T4")
     ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
                     help="Condition and overrides of protocol.yaml values, e.g. speed=0.5 distance=3")
     ap.add_argument("--out", required=True, help="Trial folder; trial.json is written there")

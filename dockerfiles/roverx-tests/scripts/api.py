@@ -4,6 +4,7 @@
   POST /t1  {"speed": 0.5}      T1 straight-line baseline
   POST /t2  {"accel": 0.2}      T2 acceleration response
   POST /t3  {"speed": 1.0}      T3 stopping response
+  POST /t4  {"yaw_rate": -0.3}  T4 in-place rotation (+ counter-clockwise, - clockwise)
             optional: any protocol.yaml setting to override (e.g. "distance": 3),
             "record": false (no bag, nothing saved, not counted), "dry_run": true (plan only),
             "notes": "..."
@@ -44,7 +45,7 @@ PORT = int(os.environ.get("PORT", "8090"))
 BAG_WARMUP_S = 1.5   # recorder discovers topics before the trial starts
 BAG_TAIL_S = 1.0     # keep recording after the trial ends
 STOP_WAIT_S = 30.0
-SETPOINT_LABEL = {"speed": "v", "accel": "a"}
+SETPOINT_LABEL = {"speed": "v", "accel": "a", "yaw_rate": "w"}
 
 # manual.csv: the API owns the first columns, the operator the rest
 MANUAL_AUTO = ["trial_id", "test", "setpoint", "repeat", "status"]
@@ -135,7 +136,10 @@ CSV_COLUMNS = [
     "braking_odom_m", "braking_time_s", "braking_t95_s", "wheels_powered_at_rest",  # T3
     "imu_fwd_speedup_mean", "imu_speedup_dir_deg", "imu_fwd_slowdown_mean", "imu_slowdown_dir_deg",
     "imu_fwd_braking_mean", "imu_braking_dir_deg", "clock_offset_s",
-    "dx_cm", "dy_cm", "endpoint_error_cm", "odom_error_cm", "stop_distance_cm",  # tape (all tests)
+    "yaw_rate_cruise_mean", "yaw_rate_cruise_std", "yaw_rate_ratio", "yaw_rate_peak", "time_to_rate_s",
+    "heading_at_stop_deg", "heading_final_deg", "overshoot_deg", "coast_after_stop_deg", "stop_time_s",
+    "odom_heading_change_deg", "wheel_imu_heading_ratio", "center_drift_odom_m",          # T4
+    "dx_cm", "dy_cm", "endpoint_error_cm", "odom_error_cm", "stop_distance_cm", "center_drift_cm",  # tape
     "observations", "notes", "bag",
 ]
 
@@ -152,7 +156,9 @@ def csv_row(t, man):
     dx, dy = number(man.get("dx_cm")), number(man.get("dy_cm"))
     row.update(dx_cm=dx, dy_cm=dy)
     # dx is measured from the distance line (8 m), so the real rest position is distance + dx
-    if dx is not None and m.get("odom_end_m") is not None:  # real rest position minus odometry at rest
+    if t["test"] == "T4" and dx is not None and dy is not None:  # centre displacement after the turn
+        row["center_drift_cm"] = math.hypot(dx, dy)
+    if dx is not None and "distance" in p and m.get("odom_end_m") is not None:  # real rest position minus odometry at rest
         row["odom_error_cm"] = p["distance"] * 100 + dx - m["odom_end_m"] * 100
     if t["test"] in ("T1", "T2") and dx is not None and dy is not None:
         row["endpoint_error_cm"] = math.hypot(dx, dy)
@@ -213,12 +219,17 @@ def start_trial(test, body):
         if _current.get("proc") and _current["proc"].poll() is None:
             return 409, {"error": f"trial {_current['id']} is running; POST /stop first"}
         cond = params["condition"]
-        label = f"{SETPOINT_LABEL.get(cond, cond)}{params[cond]:.2f}"
+        fmt = "+.2f" if cond in trial.SIGNED else ".2f"  # T4: direction in the ID, e.g. w-0.30
+        label = f"{SETPOINT_LABEL.get(cond, cond)}{params[cond]:{fmt}}"
         stamp = time.strftime("%H%M%S")
         if record:
             manual_rows, _ = read_manual()
-            repeat = 1 + sum(1 for t in load_trials() if t["test"] == test and math.isclose(setpoint(t), params[cond])
-                             and effective_status(t, manual_rows.get(t["id"])) == "DONE")
+            # lowest repeat number without a valid (DONE) run: a retry fills the gap left by an
+            # ABORTED run or one marked INVALID, instead of creating a second r5
+            valid = {t.get("repeat") for t in load_trials() if t["test"] == test
+                     and math.isclose(setpoint(t), params[cond])
+                     and effective_status(t, manual_rows.get(t["id"])) == "DONE"}
+            repeat = next(n for n in range(1, len(valid) + 2) if n not in valid)
             tid = f"{test}_{label}_r{repeat}_{stamp}"
             tdir = os.path.join(session_dir(), tid)
         else:
@@ -319,7 +330,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path != "/status":
-            self._send(404, {"error": "not found; endpoints: POST /t1 /t2 /t3 /stop, GET /status"})
+            self._send(404, {"error": "not found; endpoints: POST /t1 /t2 /t3 /t4 /stop, GET /status"})
             return
         with _lock:
             running = bool(_current.get("proc")) and _current["proc"].poll() is None
@@ -335,13 +346,13 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError as exc:
             self._send(400, {"error": f"bad JSON body: {exc}"})
             return
-        test = {"/t1": "T1", "/t2": "T2", "/t3": "T3"}.get(self.path)
+        test = {"/t1": "T1", "/t2": "T2", "/t3": "T3", "/t4": "T4"}.get(self.path)
         if test:
             self._send(*start_trial(test, body))
         elif self.path == "/stop":
             self._send(200, {"stopped": stop_trial()})
         else:
-            self._send(404, {"error": "not found; endpoints: POST /t1 /t2 /t3 /stop, GET /status"})
+            self._send(404, {"error": "not found; endpoints: POST /t1 /t2 /t3 /t4 /stop, GET /status"})
 
     def log_message(self, fmt, *args):
         print(f"[api] {self.address_string()} " + fmt % args, flush=True)

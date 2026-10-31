@@ -20,6 +20,7 @@ control:
   crawl_speed: 0.05            # slowest approach speed (T1), so friction doesn't stall it short
   rest_speed: 0.01             # |wheel speed| below this counts as stopped
   rest_hold_s: 0.5             # ... for this long
+  rest_yaw_rate: 0.02          # rad/s: |IMU yaw rate| below this also counts as stopped (T4)
   rest_timeout_s: 8.0          # give up waiting for rest after the stop command
   still_gyro_rad_s: 0.02       # still period: gyro z within this of its mean (rest noise ~1e-5)
   odom_stale_s: 0.5            # abort if /odom_raw is silent this long (it runs at ~20 Hz)
@@ -56,8 +57,19 @@ tests:
     condition: speed
     values: [0.2, 0.5, 1.0, 1.5]
     repetitions: 5
-    accel: 0.5                 # approach acceleration, as T1
+    accel: 1.5                 # approach acceleration (faster than T1's 0.5: reaches speed sooner)
     distance: 8.0              # as T1, but here v=0 is commanded at once when odometry reads it
     min_steady_s: 1.0          # required time at target speed (control.steady_*) before the stop
-    stop_mode: active          # active: hold v=0 (controllers brake) | coast: cut wheel power at the stop
+    stop_mode: active          # active: hold v=0 (controllers brake) | coast: v=0 + wheel power off (relays open ~0.5 s later)
     braking_guard: 4.0         # abort if odometry passes distance + this
+
+  T4:
+    name: In-place rotation
+    condition: yaw_rate        # rad/s, signed: + counter-clockwise (left), - clockwise (right)
+    values: [0.3, -0.3, 0.6, -0.6]
+    repetitions: 5
+    angle_deg: 90.0            # stop (v = 0, w = 0 at once) when the IMU heading has turned this much
+    ang_accel: 1.0             # rad/s^2: ramp up to the yaw rate
+    heading_guard_deg: 45.0    # abort if it turns past angle_deg + this
+    drift_guard: 0.5           # abort if wheel odometry shows the centre moving more than this (m); it
+                               # can't see sideways slip (sides run opposite = ~0 by construction): tape it

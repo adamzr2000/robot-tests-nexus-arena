@@ -1,0 +1,4 @@
+﻿trial_id,test,setpoint,repeat,status,dx_cm,dy_cm,override_status,observations,notes
+T3_v1.00_r1_193417,T3,1.0,1,DONE,,,,,
+T3_v2.00_r1_193531,T3,2.0,1,DONE,,,,,
+T3_v3.00_r1_192553,T3,3.0,1,DONE,,,,,

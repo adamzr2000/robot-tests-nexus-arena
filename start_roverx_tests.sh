@@ -3,7 +3,7 @@ set -euo pipefail
 
 DDS_INTERFACE="enp3s0"
 DOMAIN_ID=0
-SESSION_NAME=""
+SESSION_NAME="roverx-benchmark"
 MAX_TRAVEL=""
 
 usage() {
@@ -11,7 +11,8 @@ usage() {
   echo "  --iface          Laptop interface wired to the RoverX (default: enp3s0). FastDDS is"
   echo "                   restricted to its IPv4 address, so it must be up with one."
   echo "  --ros-domain-id  The robot's ROS_DOMAIN_ID (default: 0)"
-  echo "  --session        Results folder name under results/ (default: today's date)"
+  echo "  --session        Results folder under results/ (default: roverx-benchmark, the protocol"
+  echo "                   campaign; use another name only for data that must stay apart)"
   echo "  --max-travel     Space available here: runs planned longer are refused and"
   echo "                   odometry beyond it + 1 m aborts (default: no limit)"
   exit 1
@@ -39,7 +40,7 @@ fi
 mkdir -p "${SCRIPT_DIR}/.generated" "${SCRIPT_DIR}/results"
 "${SCRIPT_DIR}/dockerfiles/fastdds_profile.sh" "$DDS_INTERFACE" > "${SCRIPT_DIR}/.generated/fastdds_roverx.xml"
 chmod 644 "${SCRIPT_DIR}/.generated/fastdds_roverx.xml"
-echo "Using DDS interface: ${DDS_INTERFACE}, ROS_DOMAIN_ID=${DOMAIN_ID}, session: ${SESSION_NAME:-<date>}, max travel: ${MAX_TRAVEL:-none}"
+echo "Using DDS interface: ${DDS_INTERFACE}, ROS_DOMAIN_ID=${DOMAIN_ID}, session: ${SESSION_NAME}, max travel: ${MAX_TRAVEL:-none}"
 
 ROVERX_DOMAIN_ID="$DOMAIN_ID" SESSION="$SESSION_NAME" MAX_TRAVEL_M="$MAX_TRAVEL" \
   docker compose -f "${SCRIPT_DIR}/docker-compose-roverx-tests.yml" up -d

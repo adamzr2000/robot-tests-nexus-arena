@@ -2,7 +2,8 @@
 
 What we changed on `roverx2-PC` (192.168.5.2) compared to the manufacturer's
 code, why, and how to undo it. Changed 2026-10-28; driver caps raised out of
-reach 2026-10-29; friction feed-forward off 2026-10-30.
+reach 2026-10-29; friction feed-forward off 2026-10-30; relays switched in one
+write 2026-11-02.
 
 ## How it is deployed
 
@@ -86,8 +87,16 @@ velocity smoother max 0.5 m/s and 1.0 rad/s (was 1.2 and 4.0), accelerations
 1.0 m/s² and 2.0 rad/s² (was 4.0 and 5.0), path follower 0.4 m/s (was 1.2),
 rotate-to-heading 1.0 rad/s (was 3.5).
 
-Not changed: relay manager, lidar manager (lidar still starts in standby),
-cameras, SLAM, arm, manufacturer UI.
+**`src/MotoreCan_ws/src/motor_control/motor_control/rele_manager.py`** (2026-11-02,
+rebuilt with `colcon build --packages-select motor_control`): switching all 8 relays
+(`/toggle_wheels`, the 3 s auto-cut, auto power-on) is one HID write to the board
+(`/dev/hidraw0`, "all on" `0xFE` / "all off" `0xFC`): ~0.5 ms instead of `usbrelay`
+setting one relay at a time (~55 ms each, 482 ms for 8, measured). Falls back to
+`usbrelay` if the HID write fails; single-relay control (`/set_specific_relay`)
+unchanged. Log: `/root/reles.log` in the container ("Relés por HID directo").
+
+Not changed: lidar manager (lidar still starts in standby), cameras, SLAM, arm,
+manufacturer UI.
 
 ## Calibration
 
@@ -116,8 +125,17 @@ To recalibrate: run `roverx_diag.py straight --speed 0.3 --duration 10`, then
   integrated directly is ~1%.
 - The lidar (and its IMU) starts in standby at boot: `/toggle_lidar true`.
   robot-trajectories does this automatically.
-- When the timeout stops the robot, the wheels stay powered (held at zero) until
-  a zero `/cmd_vel` or `/toggle_wheels false`.
+- When the timeout stops the robot, the wheels stay powered until a zero
+  `/cmd_vel` (+3 s) or `/toggle_wheels false`. Powered and stopped, the robot is
+  **not** held: it can be pushed by hand (checked 2026-11-02).
+- The relays are wheel power **and the motor brakes**, which are fail-safe:
+  relays off = brakes engaged ("clack", robot locked), relays on = released
+  (checked 2026-11-02). Cutting power is therefore a brake stop, never a coast.
+- The motor controllers' command frame (`0xC3`, speed + acceleration byte per
+  motor) carries an acceleration value; this driver sends 0 (the manufacturer's
+  other drivers send 100 or 255). With 0, a sudden speed change (e.g. v = 0) is
+  ramped at ~1.4 m/s²; gradual commands are followed up to at least 1.6 m/s².
+  Controller model not named in the code.
 - Commands now mean real speeds: the manufacturer UI's speed values move the
   robot ~3.5x faster than before, and the driver no longer limits them.
 - Nav2's own limits (above) still apply to Nav2, not to `/cmd_vel` from other senders.

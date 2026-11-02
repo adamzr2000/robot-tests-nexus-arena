@@ -74,8 +74,11 @@ def load_params(test, overrides):
             ok = math.isfinite(value) and (value != 0 if key in SIGNED else value > 0)
             if not ok:
                 raise ValueError(f"{key} must be a {'non-zero' if key in SIGNED else 'positive'} number, got {value}")
-    if test == "T3" and params["stop_mode"] not in ("active", "coast"):
-        raise ValueError("stop_mode must be 'active' or 'coast'")
+    if test == "T3":
+        if params["stop_mode"] == "coast":  # old name: cutting wheel power engages the brakes
+            params["stop_mode"] = "brake"
+        if params["stop_mode"] not in ("active", "brake"):
+            raise ValueError("stop_mode must be 'active' or 'brake'")
     if MAX_TRAVEL_M is not None and params.get("distance", 0) > MAX_TRAVEL_M:
         raise ValueError(f"distance {params['distance']:g} m exceeds the max travel {MAX_TRAVEL_M:g} m "
                          "set for this location; lower distance")
@@ -101,13 +104,16 @@ class Rover(Node):
         self.odom_speeds = []       # every wheel speed received (stillness check)
         self.imu_rx = None          # monotonic time of the last IMU sample
         self.relays = None
+        self.relay_changes = []     # (monotonic, new /relay_status value)
         self.origin = None
         self.gz_bias = None         # set after settling; then heading integrates
+        self.accel_base = None      # IMU accel at rest (gravity + bias), set after settling
+        self.forward_rad = math.radians(r["imu_forward_deg"])
         self.heading = 0.0          # rad since the bias was set (+ counter-clockwise)
         self._pending = []          # fire-and-forget service calls
         self.create_subscription(Odometry, r["odom"], self._on_odom, SENSOR_QOS)
         self.create_subscription(Imu, r["imu"], self._on_imu, SENSOR_QOS)
-        self.create_subscription(Bool, r["relay_status"], lambda m: setattr(self, "relays", m.data), 10)
+        self.create_subscription(Bool, r["relay_status"], self._on_relays, 10)
 
     def _on_odom(self, m):
         p, q = m.pose.pose.position, m.pose.pose.orientation
@@ -131,8 +137,24 @@ class Rover(Node):
         self.imu.append(sample)
         self.imu_rx = sample[0]
 
+    def _on_relays(self, m):
+        if m.data != self.relays:
+            self.relay_changes.append((time.monotonic(), m.data))
+        self.relays = m.data
+
     def speed(self):
         return self.odom[2]
+
+    def forward_accel(self, window_s=0.2):
+        """Mean IMU acceleration along the robot's forward axis over the last window_s
+        (gravity/bias removed): shows the robot still decelerating even if its wheels
+        are locked (wheel speed 0 while it skids)."""
+        if self.accel_base is None or not self.imu:
+            return 0.0
+        recent = [s for s in self.imu[-int(window_s * 300):] if s[0] >= self.imu[-1][0] - window_s]
+        ax = statistics.fmean(s[1] for s in recent) - self.accel_base[0]
+        ay = statistics.fmean(s[2] for s in recent) - self.accel_base[1]
+        return ax * math.cos(self.forward_rad) + ay * math.sin(self.forward_rad)
 
     def yaw_rate(self):
         """Latest IMU yaw rate (rad/s, + counter-clockwise), gyro bias removed."""
@@ -172,10 +194,16 @@ class Rover(Node):
                 return True
         return until is None
 
-    def request_bool(self, name, value):
-        """Call a SetBool service without waiting (the reply is ignored)."""
+    def bool_client(self, name):
+        """A SetBool client connected in advance, so a later call goes out at once."""
         client = self.create_client(SetBool, name)
-        self._pending.append((client, client.call_async(SetBool.Request(data=value))))
+        if not client.wait_for_service(timeout_sec=SERVICE_WAIT_S):
+            raise Abort(f"{name} not found within {SERVICE_WAIT_S:g}s")
+        return client
+
+    def request_bool(self, client, value):
+        """Call a prepared SetBool client without waiting (the reply is ignored)."""
+        self._pending.append(client.call_async(SetBool.Request(data=value)))
 
     def set_bool(self, name, value):
         client = self.create_client(SetBool, name)
@@ -262,12 +290,15 @@ def run(cfg, test, params, result, out_dir, verbose=True):
         }
         result["clock_offset_s"] = statistics.median(node.stamp_offsets) if node.stamp_offsets else None
         result["driver_params"] = node.get_params(r["driver_node"], r["driver_params"])
+        # T3 brake: wheels-off connection made now, so the request leaves at the stop line at once
+        brake_client = node.bool_client(r["finish"][0][0]) if test == "T3" and params["stop_mode"] == "brake" else None
 
         # --- motion --------------------------------------------------------
         node.origin = node.odom[:2]
         odom_yaw0 = node.odom_yaw
         node.imu.clear()
         node.gz_bias = result["rest"]["gz_bias"]
+        node.accel_base = result["rest"]["accel_mean"]
         t0 = time.monotonic()
         events.append(node.event("motion_start"))
         moving = True
@@ -333,8 +364,8 @@ def run(cfg, test, params, result, out_dir, verbose=True):
             stop["steady_s"] = steady.held(stop["t"])
             stop["speed_avg"] = sum(steady.recent) / len(steady.recent)  # last 1 s, not one jittery sample
             stop["mode"] = params["stop_mode"]
-            if params["stop_mode"] == "coast":
-                node.request_bool(r["finish"][0][0], False)  # cut wheel power now; zeros keep going
+            if brake_client:
+                node.request_bool(brake_client, False)  # wheels off = fail-safe brakes on; zeros keep going
         events.append(node.event("stop_command", **stop))
         result["stop_command"] = stop
         if angular:
@@ -361,6 +392,8 @@ def run(cfg, test, params, result, out_dir, verbose=True):
                 t_rest = (still_since if at_rest else time.monotonic()) - t0
                 result["rest_after"] = {"t": t_rest, "odom_m": node.distance(extrapolate=False), "at_rest": at_rest,
                                         "wheels_powered": bool(node.relays),
+                                        "relays_off_t": next((tc - t0 for tc, on in node.relay_changes
+                                                              if not on and tc - t0 >= result.get("stop_command", {}).get("t", 1e9)), None),
                                         "heading_deg": math.degrees(node.heading),
                                         "odom_heading_deg": math.degrees(node.odom_yaw - odom_yaw0)}
                 events.append(node.event("at_rest", **result["rest_after"]))
@@ -377,9 +410,10 @@ def run(cfg, test, params, result, out_dir, verbose=True):
 
 
 def hold_until_rest(node, c, period, t0, stopping):
-    """Publish zero at the control rate until the wheels report rest and the IMU
-    no turning, for rest_hold_s, appending (t, odometry, wheel speed, yaw rate,
-    heading) to `stopping`. Returns (confirmed, monotonic time the stillness began)."""
+    """Publish zero at the control rate until, for rest_hold_s, the wheels report rest
+    and the IMU shows neither turning nor deceleration (a robot skidding on locked wheels
+    reads wheel speed 0 but is still decelerating), appending (t, odometry, wheel speed,
+    yaw rate, heading) to `stopping`. Returns (confirmed, monotonic time stillness began)."""
     end = time.monotonic() + c["rest_timeout_s"]
     still_since = None
     while time.monotonic() < end:
@@ -387,7 +421,8 @@ def hold_until_rest(node, c, period, t0, stopping):
         node.spin_for(period)
         stopping.append((time.monotonic() - t0, node.distance(extrapolate=False), node.speed(),
                          node.yaw_rate(), node.heading))
-        if abs(node.speed()) < c["rest_speed"] and abs(node.yaw_rate()) < c["rest_yaw_rate"]:
+        if (abs(node.speed()) < c["rest_speed"] and abs(node.yaw_rate()) < c["rest_yaw_rate"]
+                and abs(node.forward_accel()) < c["rest_accel"]):
             still_since = still_since or time.monotonic()
             if time.monotonic() - still_since >= c["rest_hold_s"]:
                 return True, still_since
@@ -400,7 +435,7 @@ def write_samples(out_dir, samples, stopping, angular):
     """The controller's own log at the control rate, for analysis without ROS tools.
     'stopping' = zero held until rest (the T3 braking, the end of every test)."""
     with open(os.path.join(out_dir, "samples.csv"), "w", newline="") as f:
-        w = csv.writer(f)
+        w = csv.writer(f, lineterminator="\n")
         w.writerow(["t_s", "phase", "cmd_linear_mps", "cmd_angular_rad_s", "wheel_speed_mps",
                     "imu_yaw_rate_rad_s", "heading_deg", "odom_m", "at_target"])
         for t, cmd, _, _, phase, at_speed, v, yr, heading, d in samples:
@@ -485,11 +520,17 @@ def metrics(test, params, result, samples, stopping, imu, heading_rad, t0):
     elif test == "T3" and stop and rest:
         m["stop_odom_m"] = stop["odom_m"]
         m["speed_at_stop"] = stop["speed_avg"]
-        m["wheels_powered_at_rest"] = rest["wheels_powered"]  # false: power was cut while still braking
+        m["wheels_powered_at_rest"] = rest["wheels_powered"]  # false: power was cut (brakes on) before rest
+        # when /relay_status confirmed wheels off after the stop command (published at 10 Hz: +0..0.1 s)
+        m["relays_off_after_stop_s"] = rest["relays_off_t"] - stop["t"] if rest.get("relays_off_t") is not None else None
         m["steady_before_stop_s"] = stop["steady_s"]
         m["steady_ok"] = stop["steady_s"] >= params["min_steady_s"]
-        m["braking_odom_m"] = rest["odom_m"] - stop["odom_m"]
-        m["braking_time_s"] = rest["t"] - stop["t"]  # until confirmed rest (|v| < rest_speed)
+        # wheel-turning distance after the stop command; the stop position includes the short
+        # between-samples estimate, so locked wheels (skid) could read slightly negative: 0 then
+        m["braking_odom_m"] = max(0.0, rest["odom_m"] - stop["odom_m"])
+        m["braking_time_s"] = rest["t"] - stop["t"]  # until confirmed rest (wheels and IMU still)
+        # wheels stopped clearly before the robot did = locked wheels, skidding
+        m["wheels_stopped_after_stop_s"] = next((s[0] for s in stopping if abs(s[2]) < 0.01), rest["t"]) - stop["t"]
         # until 95% of the braking distance: robust to the wheel-speed jitter near zero
         target = stop["odom_m"] + 0.95 * m["braking_odom_m"]
         m["braking_t95_s"] = next((s[0] for s in stopping if s[1] >= target), rest["t"]) - stop["t"]

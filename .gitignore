@@ -3,5 +3,7 @@
 __pycache__/
 /bags/*
 !/bags/.gitkeep
-/results/
+# results: track trial data and CSVs, not the rosbags (large) or local backups
+/results/**/bag/
+/results/_backup-*/
 /roverx-source/

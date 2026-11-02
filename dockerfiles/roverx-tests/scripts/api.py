@@ -81,6 +81,17 @@ def setpoint(t):
     return next(iter(t["condition"].values()))
 
 
+def stop_mode(params):
+    """T3 stop mode, a separate condition (own repeat numbers); runs recorded as
+    'coast' (before 2026-11-02) were the same power-cut stop, now called 'brake'."""
+    mode = params.get("stop_mode")
+    return "brake" if mode == "coast" else mode
+
+
+def same_condition(t, test, value, mode):
+    return t["test"] == test and math.isclose(setpoint(t), value) and stop_mode(t.get("params", {})) == mode
+
+
 # --- manual.csv ----------------------------------------------------------------
 
 def read_manual():
@@ -110,7 +121,8 @@ def update_manual(trials):
     rows, delim = read_manual()
     path = os.path.join(session_dir(), "manual.csv")
     with open(path + ".tmp", "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=MANUAL_AUTO + MANUAL_OPERATOR, delimiter=delim, extrasaction="ignore")
+        w = csv.DictWriter(f, fieldnames=MANUAL_AUTO + MANUAL_OPERATOR, delimiter=delim, extrasaction="ignore",
+                           lineterminator="\n")  # LF, as git stores it
         w.writeheader()
         for t in trials:
             row = rows.get(t["id"], {})
@@ -133,13 +145,13 @@ CSV_COLUMNS = [
     "coast_after_stop_m",                                                       # T1
     "t10_s", "t90_s", "planned_t90_s", "accel_measured",                        # T2
     "stop_mode", "stop_odom_m", "speed_at_stop", "steady_before_stop_s", "steady_ok",
-    "braking_odom_m", "braking_time_s", "braking_t95_s", "wheels_powered_at_rest",  # T3
+    "braking_odom_m", "braking_time_s", "braking_t95_s", "wheels_powered_at_rest", "relays_off_after_stop_s", "wheels_stopped_after_stop_s",  # T3
     "imu_fwd_speedup_mean", "imu_speedup_dir_deg", "imu_fwd_slowdown_mean", "imu_slowdown_dir_deg",
     "imu_fwd_braking_mean", "imu_braking_dir_deg", "clock_offset_s",
     "yaw_rate_cruise_mean", "yaw_rate_cruise_std", "yaw_rate_ratio", "yaw_rate_peak", "time_to_rate_s",
     "heading_at_stop_deg", "heading_final_deg", "overshoot_deg", "coast_after_stop_deg", "stop_time_s",
     "odom_heading_change_deg", "wheel_imu_heading_ratio", "center_drift_odom_m",          # T4
-    "dx_cm", "dy_cm", "endpoint_error_cm", "odom_error_cm", "stop_distance_cm", "center_drift_cm",  # tape
+    "dx_cm", "dy_cm", "endpoint_error_cm", "odom_error_cm", "stop_distance_cm", "skid_cm", "center_drift_cm",  # tape
     "observations", "notes", "bag",
 ]
 
@@ -165,6 +177,8 @@ def csv_row(t, man):
     if t["test"] == "T3" and dx is not None and m.get("stop_odom_m") is not None:
         # real rest position minus the odometry position where v=0 was commanded
         row["stop_distance_cm"] = p["distance"] * 100 + dx - m["stop_odom_m"] * 100
+        if m.get("braking_odom_m") is not None:  # real braking distance beyond what the wheels turned
+            row["skid_cm"] = row["stop_distance_cm"] - m["braking_odom_m"] * 100
     return {k: (round(v, 4) if isinstance(v, float) else v) for k, v in row.items()}
 
 
@@ -177,7 +191,7 @@ def refresh_logs():
     manual_rows, _ = read_manual()
     path = os.path.join(session_dir(), "run_log.csv")
     with open(path + ".tmp", "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
+        w = csv.DictWriter(f, fieldnames=CSV_COLUMNS, lineterminator="\n")
         w.writeheader()
         for t in trials:
             w.writerow(csv_row(t, manual_rows.get(t["id"], {})))
@@ -189,10 +203,13 @@ def done_counts():
     manual_rows, _ = read_manual()
     out = {}
     for test, spec in cfg["tests"].items():
-        done = [setpoint(t) for t in trials
-                if t["test"] == test and effective_status(t, manual_rows.get(t["id"])) == "DONE"]
-        out[test] = {f"{spec['condition']} {v:g}": f"{sum(math.isclose(d, v) for d in done)}/{spec['repetitions']}"
-                     for v in spec["values"]}
+        done = [t for t in trials if t["test"] == test and effective_status(t, manual_rows.get(t["id"])) == "DONE"]
+        # T3: the protocol's stop mode, plus any other mode already run (each counted on its own)
+        modes = [stop_mode(spec)] + sorted({stop_mode(t["params"]) for t in done} - {stop_mode(spec)})
+        out[test] = {f"{spec['condition']} {v:g}" + (f" {m}" if m else ""):
+                     f"{sum(same_condition(t, test, v, m) for t in done)}/{spec['repetitions']}"
+                     for m in modes for v in spec["values"]
+                     if m == stop_mode(spec) or any(same_condition(t, test, v, m) for t in done)}
     return out
 
 
@@ -221,13 +238,15 @@ def start_trial(test, body):
         cond = params["condition"]
         fmt = "+.2f" if cond in trial.SIGNED else ".2f"  # T4: direction in the ID, e.g. w-0.30
         label = f"{SETPOINT_LABEL.get(cond, cond)}{params[cond]:{fmt}}"
+        if stop_mode(params):  # T3: e.g. T3_v1.00_brake_r1
+            label += f"_{stop_mode(params)}"
         stamp = time.strftime("%H%M%S")
         if record:
             manual_rows, _ = read_manual()
             # lowest repeat number without a valid (DONE) run: a retry fills the gap left by an
             # ABORTED run or one marked INVALID, instead of creating a second r5
-            valid = {t.get("repeat") for t in load_trials() if t["test"] == test
-                     and math.isclose(setpoint(t), params[cond])
+            valid = {t.get("repeat") for t in load_trials()
+                     if same_condition(t, test, params[cond], stop_mode(params))
                      and effective_status(t, manual_rows.get(t["id"])) == "DONE"}
             repeat = next(n for n in range(1, len(valid) + 2) if n not in valid)
             tid = f"{test}_{label}_r{repeat}_{stamp}"

@@ -1,0 +1,115 @@
+{
+  "id": "T1_v0.50_r3_163429",
+  "test": "T1",
+  "name": "Straight-line baseline",
+  "condition": {
+    "speed": 0.5
+  },
+  "repeat": 3,
+  "params": {
+    "condition": "speed",
+    "distance": 8.0,
+    "accel": 0.5,
+    "overshoot_guard": 0.5,
+    "speed": 0.5
+  },
+  "control": {
+    "rate_hz": 50,
+    "settle_s": 2.0,
+    "crawl_speed": 0.05,
+    "rest_speed": 0.01,
+    "rest_hold_s": 0.5,
+    "rest_timeout_s": 8.0,
+    "still_gyro_rad_s": 0.02,
+    "odom_stale_s": 0.5,
+    "imu_stale_s": 0.5,
+    "extrapolate_max_s": 0.15,
+    "steady_tolerance": 0.05,
+    "steady_window_s": 1.0,
+    "response_timeout_s": 1.5
+  },
+  "code_version": "82bb3c605949",
+  "started": "2026-10-30T16:34:31+0000",
+  "status": "DONE",
+  "events": [
+    {
+      "event": "motion_start",
+      "wall": 1793378074.8332393
+    },
+    {
+      "t": 17.00069005899786,
+      "odom_m": 8.001240353899231,
+      "speed": 0.1207156977141878,
+      "event": "stop_command",
+      "wall": 1793378091.8339505
+    },
+    {
+      "t": 17.78883912099991,
+      "odom_m": 7.995504840035442,
+      "at_rest": true,
+      "wheels_powered": true,
+      "event": "at_rest",
+      "wall": 1793378093.144324
+    }
+  ],
+  "metrics": {
+    "time_to_speed_s": 1.0405576509983803,
+    "motion_time_s": 17.78883912099991,
+    "odom_end_m": 7.995504840035442,
+    "max_speed": 0.5162683927399228,
+    "speed_held_mean": 0.49558839336290783,
+    "speed_held_s": 14.84,
+    "heading_change_deg": -4.0524118099915265,
+    "imu_ax_speedup_mean": -0.20362529799244272,
+    "imu_ay_speedup_mean": 0.4390280022507924,
+    "imu_fwd_speedup_mean": 0.48284073010261164,
+    "imu_speedup_dir_deg": 114.88231177986937,
+    "imu_ax_slowdown_mean": 0.00406650734732163,
+    "imu_ay_slowdown_mean": -0.23552189445199218,
+    "imu_fwd_slowdown_mean": -0.22133593657179035,
+    "imu_slowdown_dir_deg": -89.01083268608816,
+    "coast_after_stop_m": -0.005735513863789343
+  },
+  "manual": {},
+  "max_travel_m": null,
+  "imu_forward_deg": 111.0,
+  "rest": {
+    "gz_bias": 6.710001543920161e-07,
+    "accel_mean": [
+      0.09756491394497885,
+      0.043683428894040616,
+      -9.778330713451028
+    ],
+    "accel_std": [
+      0.05929056187374244,
+      0.14273305013561127,
+      0.1755874438548708
+    ],
+    "imu_samples": 501
+  },
+  "clock_offset_s": 2.1302292346954346,
+  "driver_params": {
+    "wheel_speed_scale": 0.29,
+    "track_width": 1.2,
+    "wheel_radius": 0.1,
+    "friction_ff": 0.0,
+    "cmd_timeout": 0.5,
+    "max_linear": 10.0,
+    "max_angular": 20.0
+  },
+  "stop_command": {
+    "t": 17.00069005899786,
+    "odom_m": 8.001240353899231,
+    "speed": 0.1207156977141878
+  },
+  "rest_after": {
+    "t": 17.78883912099991,
+    "odom_m": 7.995504840035442,
+    "at_rest": true,
+    "wheels_powered": true
+  },
+  "finished": "2026-10-30T16:34:53+0000",
+  "notes": "",
+  "overrides": {},
+  "recorded": true
+}

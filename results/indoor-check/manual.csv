@@ -1,0 +1,2 @@
+﻿trial_id,test,setpoint,repeat,status,dx_cm,dy_cm,override_status,observations,notes
+T1_v0.50_r1_102155,T1,0.5,1,DONE,-4,8,,,iPhone measure; dx/dy at 3 m mark

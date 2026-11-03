@@ -117,8 +117,11 @@ def number(value):
 
 
 def update_manual(trials):
-    """Add a row for every recorded trial, refresh the API's columns, keep the operator's."""
+    """Add a row for every recorded trial, refresh the API's columns, keep the operator's.
+    Rows with operator values but no trial.json (e.g. a renamed folder) are kept at the end."""
     rows, delim = read_manual()
+    ids = {t["id"] for t in trials}
+    orphans = [r for i, r in rows.items() if i not in ids and any((r.get(k) or "").strip() for k in MANUAL_OPERATOR)]
     path = os.path.join(session_dir(), "manual.csv")
     with open(path + ".tmp", "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=MANUAL_AUTO + MANUAL_OPERATOR, delimiter=delim, extrasaction="ignore",
@@ -129,11 +132,14 @@ def update_manual(trials):
             row.update(trial_id=t["id"], test=t["test"], setpoint=setpoint(t), repeat=t.get("repeat"),
                        status=t.get("status") + (f" ({t['reason']})" if t.get("reason") else ""))
             w.writerow(row)
+        for row in orphans:
+            print(f"[api] manual.csv: {row['trial_id']} has no trial.json; row kept, not used")
+            w.writerow(row)
     os.replace(path + ".tmp", path)
 
 
 def effective_status(t, manual_row):
-    return (manual_row or {}).get("override_status") or t.get("status")
+    return ((manual_row or {}).get("override_status") or "").strip().upper() or t.get("status")
 
 
 # --- run log -------------------------------------------------------------------

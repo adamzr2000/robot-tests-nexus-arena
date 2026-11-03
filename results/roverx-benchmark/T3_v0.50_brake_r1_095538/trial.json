@@ -1,0 +1,144 @@
+{
+  "id": "T3_v0.50_brake_r1_095538",
+  "test": "T3",
+  "name": "Stopping response",
+  "condition": {
+    "speed": 0.5
+  },
+  "repeat": 1,
+  "params": {
+    "condition": "speed",
+    "accel": 1.5,
+    "distance": 8.0,
+    "min_steady_s": 1.0,
+    "stop_mode": "brake",
+    "braking_guard": 4.0,
+    "speed": 0.5
+  },
+  "control": {
+    "rate_hz": 50,
+    "settle_s": 2.0,
+    "crawl_speed": 0.05,
+    "rest_speed": 0.01,
+    "rest_hold_s": 0.5,
+    "rest_yaw_rate": 0.02,
+    "rest_accel": 0.5,
+    "rest_timeout_s": 8.0,
+    "still_gyro_rad_s": 0.02,
+    "odom_stale_s": 0.5,
+    "imu_stale_s": 0.5,
+    "extrapolate_max_s": 0.15,
+    "steady_tolerance": 0.05,
+    "steady_window_s": 1.0,
+    "response_timeout_s": 1.5
+  },
+  "code_version": "0daa266490cd",
+  "started": "2026-11-03T09:55:40+0000",
+  "status": "DONE",
+  "events": [
+    {
+      "event": "motion_start",
+      "wall": 1793699743.3537703
+    },
+    {
+      "t": 16.400848455000414,
+      "odom_m": 8.006931918374557,
+      "speed": 0.5041209011460421,
+      "heading_deg": -3.547557851179646,
+      "yaw_rate": -0.0034708549174772042,
+      "steady_s": 15.140484505000131,
+      "speed_avg": 0.49721201530202264,
+      "mode": "brake",
+      "event": "stop_command",
+      "wall": 1793699759.7548122
+    },
+    {
+      "t": 17.599484258000302,
+      "odom_m": 8.122651507088746,
+      "at_rest": true,
+      "wheels_powered": false,
+      "relays_off_t": 16.457063498000025,
+      "heading_deg": -3.6958578634875243,
+      "odom_heading_deg": 2.110666394200068,
+      "event": "at_rest",
+      "wall": 1793699761.4714136
+    }
+  ],
+  "metrics": {
+    "time_to_speed_s": 0.4400946160003514,
+    "motion_time_s": 17.599484258000302,
+    "heading_change_deg": -3.6958578634875243,
+    "odom_end_m": 8.122651507088746,
+    "max_speed": 0.5215829203122453,
+    "speed_held_mean": 0.4954830948232516,
+    "speed_held_s": 15.64,
+    "imu_ax_speedup_mean": -0.5728464285379026,
+    "imu_ay_speedup_mean": 1.0183858740431324,
+    "imu_fwd_speedup_mean": 1.1560349186273897,
+    "imu_speedup_dir_deg": 119.35794049771106,
+    "stop_odom_m": 8.006931918374557,
+    "speed_at_stop": 0.49721201530202264,
+    "wheels_powered_at_rest": false,
+    "relays_off_after_stop_s": 0.05621504299961089,
+    "steady_before_stop_s": 15.140484505000131,
+    "steady_ok": true,
+    "braking_odom_m": 0.11571958871418886,
+    "braking_time_s": 1.1986358029998883,
+    "wheels_stopped_after_stop_s": 0.43610517700017226,
+    "braking_t95_s": 0.3193815429995084,
+    "imu_ax_braking_mean": 0.027299040401277893,
+    "imu_ay_braking_mean": -0.3249872645531855,
+    "imu_fwd_braking_mean": -0.3131848501808821,
+    "imu_braking_dir_deg": -85.19840736152499
+  },
+  "manual": {},
+  "max_travel_m": null,
+  "imu_forward_deg": 111.0,
+  "rest": {
+    "gz_bias": -1.7056335403185449e-06,
+    "accel_mean": [
+      -0.04606559216875381,
+      0.11568216410211711,
+      -9.830572978766982
+    ],
+    "accel_std": [
+      0.06460452995963174,
+      0.1289790265002933,
+      0.173813046066981
+    ],
+    "imu_samples": 499
+  },
+  "clock_offset_s": 2.8279569149017334,
+  "driver_params": {
+    "wheel_speed_scale": 0.29,
+    "track_width": 1.2,
+    "wheel_radius": 0.1,
+    "friction_ff": 0.0,
+    "cmd_timeout": 0.5,
+    "max_linear": 10.0,
+    "max_angular": 20.0
+  },
+  "stop_command": {
+    "t": 16.400848455000414,
+    "odom_m": 8.006931918374557,
+    "speed": 0.5041209011460421,
+    "heading_deg": -3.547557851179646,
+    "yaw_rate": -0.0034708549174772042,
+    "steady_s": 15.140484505000131,
+    "speed_avg": 0.49721201530202264,
+    "mode": "brake"
+  },
+  "rest_after": {
+    "t": 17.599484258000302,
+    "odom_m": 8.122651507088746,
+    "at_rest": true,
+    "wheels_powered": false,
+    "relays_off_t": 16.457063498000025,
+    "heading_deg": -3.6958578634875243,
+    "odom_heading_deg": 2.110666394200068
+  },
+  "finished": "2026-11-03T09:56:01+0000",
+  "notes": "",
+  "overrides": {},
+  "recorded": true
+}

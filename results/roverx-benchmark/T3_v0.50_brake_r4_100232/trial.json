@@ -1,0 +1,144 @@
+{
+  "id": "T3_v0.50_brake_r4_100232",
+  "test": "T3",
+  "name": "Stopping response",
+  "condition": {
+    "speed": 0.5
+  },
+  "repeat": 4,
+  "params": {
+    "condition": "speed",
+    "accel": 1.5,
+    "distance": 8.0,
+    "min_steady_s": 1.0,
+    "stop_mode": "brake",
+    "braking_guard": 4.0,
+    "speed": 0.5
+  },
+  "control": {
+    "rate_hz": 50,
+    "settle_s": 2.0,
+    "crawl_speed": 0.05,
+    "rest_speed": 0.01,
+    "rest_hold_s": 0.5,
+    "rest_yaw_rate": 0.02,
+    "rest_accel": 0.5,
+    "rest_timeout_s": 8.0,
+    "still_gyro_rad_s": 0.02,
+    "odom_stale_s": 0.5,
+    "imu_stale_s": 0.5,
+    "extrapolate_max_s": 0.15,
+    "steady_tolerance": 0.05,
+    "steady_window_s": 1.0,
+    "response_timeout_s": 1.5
+  },
+  "code_version": "0daa266490cd",
+  "started": "2026-11-03T10:02:34+0000",
+  "status": "DONE",
+  "events": [
+    {
+      "event": "motion_start",
+      "wall": 1793700156.8358471
+    },
+    {
+      "t": 16.400881224999466,
+      "odom_m": 8.003567271095823,
+      "speed": 0.48817731842907397,
+      "heading_deg": -3.7709058441508727,
+      "yaw_rate": -0.011228976814237172,
+      "steady_s": 15.100758778999989,
+      "speed_avg": 0.49558728830134113,
+      "mode": "brake",
+      "event": "stop_command",
+      "wall": 1793700173.2369323
+    },
+    {
+      "t": 17.615444246999687,
+      "odom_m": 8.117375145158993,
+      "at_rest": true,
+      "wheels_powered": false,
+      "relays_off_t": 16.478289179000058,
+      "heading_deg": -3.918110648314614,
+      "odom_heading_deg": 2.8369535120750364,
+      "event": "at_rest",
+      "wall": 1793700174.9613016
+    }
+  ],
+  "metrics": {
+    "time_to_speed_s": 0.4605179430000135,
+    "motion_time_s": 17.615444246999687,
+    "heading_change_deg": -3.918110648314614,
+    "odom_end_m": 8.117375145158993,
+    "max_speed": 0.5162683927399225,
+    "speed_held_mean": 0.49501417587742463,
+    "speed_held_s": 15.6,
+    "imu_ax_speedup_mean": -0.614094811343682,
+    "imu_ay_speedup_mean": 1.0423365436467769,
+    "imu_fwd_speedup_mean": 1.1931768933390203,
+    "imu_speedup_dir_deg": 120.5045567130952,
+    "stop_odom_m": 8.003567271095823,
+    "speed_at_stop": 0.49558728830134113,
+    "wheels_powered_at_rest": false,
+    "relays_off_after_stop_s": 0.07740795400059142,
+    "steady_before_stop_s": 15.100758778999989,
+    "steady_ok": true,
+    "braking_odom_m": 0.11380787406316983,
+    "braking_time_s": 1.2145630220002204,
+    "wheels_stopped_after_stop_s": 0.40820092700050736,
+    "braking_t95_s": 0.3204747509998924,
+    "imu_ax_braking_mean": -0.008973816320624148,
+    "imu_ay_braking_mean": -0.29752079035892726,
+    "imu_fwd_braking_mean": -0.27454365820065363,
+    "imu_braking_dir_deg": -91.72763041872597
+  },
+  "manual": {},
+  "max_travel_m": null,
+  "imu_forward_deg": 111.0,
+  "rest": {
+    "gz_bias": 2.038708117539949e-06,
+    "accel_mean": [
+      -0.051224946914949415,
+      0.0886760799931288,
+      -9.617138592845416
+    ],
+    "accel_std": [
+      0.07316096171423395,
+      0.15125691276899056,
+      0.17824269158160694
+    ],
+    "imu_samples": 502
+  },
+  "clock_offset_s": 2.805931329727173,
+  "driver_params": {
+    "wheel_speed_scale": 0.29,
+    "track_width": 1.2,
+    "wheel_radius": 0.1,
+    "friction_ff": 0.0,
+    "cmd_timeout": 0.5,
+    "max_linear": 10.0,
+    "max_angular": 20.0
+  },
+  "stop_command": {
+    "t": 16.400881224999466,
+    "odom_m": 8.003567271095823,
+    "speed": 0.48817731842907397,
+    "heading_deg": -3.7709058441508727,
+    "yaw_rate": -0.011228976814237172,
+    "steady_s": 15.100758778999989,
+    "speed_avg": 0.49558728830134113,
+    "mode": "brake"
+  },
+  "rest_after": {
+    "t": 17.615444246999687,
+    "odom_m": 8.117375145158993,
+    "at_rest": true,
+    "wheels_powered": false,
+    "relays_off_t": 16.478289179000058,
+    "heading_deg": -3.918110648314614,
+    "odom_heading_deg": 2.8369535120750364
+  },
+  "finished": "2026-11-03T10:02:55+0000",
+  "notes": "",
+  "overrides": {},
+  "recorded": true
+}

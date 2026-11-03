@@ -1,0 +1,144 @@
+{
+  "id": "T3_v0.50_brake_r3_100014",
+  "test": "T3",
+  "name": "Stopping response",
+  "condition": {
+    "speed": 0.5
+  },
+  "repeat": 3,
+  "params": {
+    "condition": "speed",
+    "accel": 1.5,
+    "distance": 8.0,
+    "min_steady_s": 1.0,
+    "stop_mode": "brake",
+    "braking_guard": 4.0,
+    "speed": 0.5
+  },
+  "control": {
+    "rate_hz": 50,
+    "settle_s": 2.0,
+    "crawl_speed": 0.05,
+    "rest_speed": 0.01,
+    "rest_hold_s": 0.5,
+    "rest_yaw_rate": 0.02,
+    "rest_accel": 0.5,
+    "rest_timeout_s": 8.0,
+    "still_gyro_rad_s": 0.02,
+    "odom_stale_s": 0.5,
+    "imu_stale_s": 0.5,
+    "extrapolate_max_s": 0.15,
+    "steady_tolerance": 0.05,
+    "steady_window_s": 1.0,
+    "response_timeout_s": 1.5
+  },
+  "code_version": "0daa266490cd",
+  "started": "2026-11-03T10:00:16+0000",
+  "status": "DONE",
+  "events": [
+    {
+      "event": "motion_start",
+      "wall": 1793700019.7311435
+    },
+    {
+      "t": 16.400626098999965,
+      "odom_m": 8.004304705107112,
+      "speed": 0.4919734095521615,
+      "heading_deg": -3.786120130306476,
+      "yaw_rate": 0.00739911377487411,
+      "steady_s": 15.119879717000003,
+      "speed_avg": 0.4973031214889766,
+      "mode": "brake",
+      "event": "stop_command",
+      "wall": 1793700036.1319618
+    },
+    {
+      "t": 17.453909632999967,
+      "odom_m": 8.112532530303424,
+      "at_rest": true,
+      "wheels_powered": false,
+      "relays_off_t": 16.475294047000716,
+      "heading_deg": -3.9691189398924873,
+      "odom_heading_deg": 1.3944394692700306,
+      "event": "at_rest",
+      "wall": 1793700037.6890569
+    }
+  ],
+  "metrics": {
+    "time_to_speed_s": 0.44055350400049065,
+    "motion_time_s": 17.453909632999967,
+    "heading_change_deg": -3.9691189398924873,
+    "odom_end_m": 8.112532530303424,
+    "max_speed": 0.5162683927399228,
+    "speed_held_mean": 0.49512124511422967,
+    "speed_held_s": 15.6,
+    "imu_ax_speedup_mean": -0.5776657986716283,
+    "imu_ay_speedup_mean": 1.0050066447589039,
+    "imu_fwd_speedup_mean": 1.1452714398389388,
+    "imu_speedup_dir_deg": 119.88977411697573,
+    "stop_odom_m": 8.004304705107112,
+    "speed_at_stop": 0.4973031214889766,
+    "wheels_powered_at_rest": false,
+    "relays_off_after_stop_s": 0.0746679480007515,
+    "steady_before_stop_s": 15.119879717000003,
+    "steady_ok": true,
+    "braking_odom_m": 0.10822782519631247,
+    "braking_time_s": 1.053283534000002,
+    "wheels_stopped_after_stop_s": 0.4611490800007232,
+    "braking_t95_s": 0.3229737159999786,
+    "imu_ax_braking_mean": 0.10988725638787518,
+    "imu_ay_braking_mean": -0.3796454415683296,
+    "imu_fwd_braking_mean": -0.3938096240099611,
+    "imu_braking_dir_deg": -73.85706881402338
+  },
+  "manual": {},
+  "max_travel_m": null,
+  "imu_forward_deg": 111.0,
+  "rest": {
+    "gz_bias": 1.956316999297769e-06,
+    "accel_mean": [
+      -0.040038234909065065,
+      0.10767682718951255,
+      -9.625655681610107
+    ],
+    "accel_std": [
+      0.07004133745992946,
+      0.1518247726201864,
+      0.18537953256439535
+    ],
+    "imu_samples": 500
+  },
+  "clock_offset_s": 2.8131364583969116,
+  "driver_params": {
+    "wheel_speed_scale": 0.29,
+    "track_width": 1.2,
+    "wheel_radius": 0.1,
+    "friction_ff": 0.0,
+    "cmd_timeout": 0.5,
+    "max_linear": 10.0,
+    "max_angular": 20.0
+  },
+  "stop_command": {
+    "t": 16.400626098999965,
+    "odom_m": 8.004304705107112,
+    "speed": 0.4919734095521615,
+    "heading_deg": -3.786120130306476,
+    "yaw_rate": 0.00739911377487411,
+    "steady_s": 15.119879717000003,
+    "speed_avg": 0.4973031214889766,
+    "mode": "brake"
+  },
+  "rest_after": {
+    "t": 17.453909632999967,
+    "odom_m": 8.112532530303424,
+    "at_rest": true,
+    "wheels_powered": false,
+    "relays_off_t": 16.475294047000716,
+    "heading_deg": -3.9691189398924873,
+    "odom_heading_deg": 1.3944394692700306
+  },
+  "finished": "2026-11-03T10:00:37+0000",
+  "notes": "",
+  "overrides": {},
+  "recorded": true
+}

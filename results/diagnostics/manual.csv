@@ -1,0 +1,8 @@
+﻿trial_id,test,setpoint,repeat,status,dx_cm,dy_cm,override_status,observations,notes
+T1_v0.20_r1_104457,T1,0.2,1,DONE,7,-11,,,
+T1_v0.40_r1_103903,T1,0.4,1,DONE,-12,-9,,,
+T1_v0.40_r2_104131,T1,0.4,2,DONE,-12,-12,,,
+T1_v0.50_r1_104317,T1,0.5,1,DONE,-17,-18,,,
+T1_v0.60_r1_104701,T1,0.6,1,DONE,-16,-10,,,
+T1_v0.60_r2_104839,T1,0.6,2,DONE,-14,-22,,,
+T1_v1.00_r1_105021,T1,1.0,1,DONE,8,-3,,,

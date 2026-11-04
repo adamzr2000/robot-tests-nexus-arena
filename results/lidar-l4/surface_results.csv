@@ -1,0 +1,11 @@
+﻿trial_id,test,setup,sheet,repeat,status,distance_mm,noise_mm,outliers_pct,returns_pct,notes
+L4a_floor_d0.40_r1_134246,L4a,"lidar on its side, bare floor",no,1,DONE,398.0,0.64,0.0,100.0,
+L4a_floor_d0.40_r2_134348,L4a,"lidar on its side, bare floor",no,2,DONE,397.5,0.66,0.0,100.0,
+L4a_floor_d0.40_r3_134440,L4a,"lidar on its side, bare floor",no,3,DONE,397.5,0.65,0.0,100.0,
+L4a_floor_d0.40_r4_134526,L4a,"lidar on its side, bare floor",no,4,DONE,397.5,0.72,0.0,100.0,
+L4a_floor_d0.40_r5_134618,L4a,"lidar on its side, bare floor",no,5,DONE,398.0,0.76,0.0,100.0,
+L4b_card_d0.40_r1_134842,L4b,"lidar on its side, cardboard sheet",yes,1,DONE,389.0,0.48,0.0,100.0,
+L4b_card_d0.40_r2_134944,L4b,"lidar on its side, cardboard sheet",yes,2,DONE,389.0,0.43,0.0,100.0,
+L4b_card_d0.40_r3_135059,L4b,"lidar on its side, cardboard sheet",yes,3,DONE,388.0,0.4,0.0,100.0,
+L4b_card_d0.40_r4_135156,L4b,"lidar on its side, cardboard sheet",yes,4,DONE,387.0,0.33,0.0,100.0,
+L4b_card_d0.40_r5_135337,L4b,"lidar on its side, cardboard sheet",yes,5,DONE,387.0,0.12,0.0,100.0,

@@ -6,7 +6,8 @@
   POST /l3  {}   L3 raised: same box, same place, lidar raised
   Surface tests (does the floor's reflection affect the sensor?), each a pair: a = bare floor, b = a thin
   cardboard sheet on the floor, nothing else changed:
-  POST /l4a /l4b  vertical:   lidar on its side, its box-side beam straight down to the floor (~0.4 m)
+  POST /l4a /l4b  vertical:   lidar on its side, its box-side beam straight down to the floor (~0.4 m);
+                  requires {"ground_truth_mm": <hand-measured lidar centre to surface>}
   POST /l5a /l5b  tilted:     lidar tilted down, its box-side beam hits the floor ~1 m away
   POST /l6a /l6b  horizontal: lidar flat on the floor, box at 1 m; the sheet covers the floor in between
             optional: "notes": "...", or any PROTOCOL setting to override (e.g. "duration": 60);
@@ -69,10 +70,12 @@ PROTOCOL = {
         #    target is the floor itself, hit head-on
         # L5 tilted: lidar on boxes ~40 cm up, tilted down, box side hits the floor ~1 m away (slant)
         # L6 horizontal: lidar flat on the floor, box at 1 m; the sheet covers the floor under the beam path
+        # ground_truth_mm (L4 only, required): lidar rotation centre to the surface under it, measured by
+        #    hand for this run (L4b: to the top of the sheet); the analysis compares the lidar with it
         "L4a": {"name": "floor", "setup": "lidar on its side, bare floor", "target": True, "pair": "L4",
-                "sheet": False, "defaults": {"distance": 0.4}},
+                "sheet": False, "defaults": {"distance": 0.4, "ground_truth_mm": None}},
         "L4b": {"name": "card", "setup": "lidar on its side, cardboard sheet", "target": True, "pair": "L4",
-                "sheet": True, "defaults": {"distance": 0.4}},
+                "sheet": True, "defaults": {"distance": 0.4, "ground_truth_mm": None}},
         "L5a": {"name": "floor", "setup": "lidar tilted down, bare floor", "target": True, "pair": "L5",
                 "sheet": False, "defaults": {"distance": 1.0}},
         "L5b": {"name": "card", "setup": "lidar tilted down, cardboard sheet", "target": True, "pair": "L5",
@@ -419,6 +422,9 @@ def start_run(test, body):
             return 400, {"error": f"'{k}' must be a number"}
     if params["duration"] <= 0 or params["delay"] < 0 or params["distance"] <= 0:
         return 400, {"error": "duration and distance must be > 0, delay >= 0"}
+    if "ground_truth_mm" in params and not (params["ground_truth_mm"] or 0) > 0:
+        return 400, {"error": "pass the hand-measured distance from the lidar's rotation centre to the surface "
+                              "below, e.g. {\"ground_truth_mm\": 400}"}
     if not scan_alive():
         return 503, {"error": f"no {SCAN_TOPIC} in the last second; is the rplidar-lidar container running? "
                               "(docker logs rplidar-lidar)"}

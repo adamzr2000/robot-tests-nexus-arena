@@ -1,0 +1,3 @@
+surface,ground_truth_mm,readings,lidar_mean_mm,error_mean_mm,error_std_mm
+bare floor,400.0,28067,396.13,-3.87,3.23
+cardboard,393.0,27991,387.86,-5.14,0.82

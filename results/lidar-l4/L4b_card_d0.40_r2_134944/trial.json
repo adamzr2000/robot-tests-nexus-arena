@@ -1,0 +1,72 @@
+{
+ "id": "L4b_card_d0.40_r2_134944",
+ "test": "L4b",
+ "setup": {
+  "name": "card",
+  "setup": "lidar on its side, cardboard sheet",
+  "target": true,
+  "pair": "L4",
+  "sheet": true,
+  "defaults": {
+   "distance": 0.4,
+   "ground_truth_mm": null
+  }
+ },
+ "repeat": 2,
+ "status": "DONE",
+ "reason": null,
+ "started": "2026-11-04T13:49:44+0000",
+ "params": {
+  "duration": 30.0,
+  "delay": 5.0,
+  "distance": 0.4,
+  "box_angle": 180.0,
+  "zone_half_angle": 10.0,
+  "zone_margin": 0.5,
+  "center_half_angle": 2.0,
+  "ground_truth_mm": 393.0
+ },
+ "overrides": {
+  "ground_truth_mm": 393
+ },
+ "notes": "",
+ "code_version": "e37938b0a7c6",
+ "lidar": {
+  "driver_params": {
+   "angle_compensate": true,
+   "frame_id": "laser_link",
+   "serial_port": "/dev/rplidar",
+   "serial_baudrate": 256000,
+   "scan_mode": "Sensitivity",
+   "inverted": false
+  },
+  "frame_id": "laser_link",
+  "points_per_scan": 1440,
+  "angle_min_deg": -179.0,
+  "angle_increment_deg": 0.24948,
+  "range_min_m": 0.15000000596046448,
+  "range_max_m": 25.0
+ },
+ "metrics": {
+  "duration_s": 29.901,
+  "scans": 402,
+  "scan_hz": 13.411,
+  "max_gap_s": 0.155,
+  "valid_fraction": 0.4522,
+  "zone_points_mean": 77.85,
+  "zone_min_m": 0.388,
+  "detection_rate": 1.0,
+  "range_median_m": 0.389,
+  "range_std_mm": 0.44,
+  "range_min_m": 0.388,
+  "range_max_m": 0.389,
+  "beam_std_mm": 0.43,
+  "outlier_fraction": 0.0
+ },
+ "ground_truth_correction": {
+  "entered_mm": 397.0,
+  "corrected_mm": 393.0,
+  "date": "2026-11-04",
+  "reason": "entered wrong at run time; cardboard sheet is 7 mm, 400 - 7 = 393"
+ }
+}

@@ -6,7 +6,7 @@ set -euo pipefail
 #   ./lidar_viz.sh rviz <run folder>    RViz replaying that run's bag in a loop, e.g.
 #                                       results/lidar-benchmark/L2_box_d2.00_r1_140502
 #   ./lidar_viz.sh plot [session]       figures from the bags into results/<session>/figures
-#                                       (default session: lidar-benchmark)
+#                                       (default session: lidar-l4)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE="rplidar-viz"
@@ -46,7 +46,7 @@ case "$1" in
     fi
     ;;
   plot)
-    SESSION="${2:-lidar-benchmark}"
+    SESSION="${2:-lidar-l4}"
     docker run --rm --user "$(id -u):$(id -g)" -e MPLCONFIGDIR=/tmp \
       -v "${SCRIPT_DIR}/results:/results" -v "${TESTS_DIR}/scripts:/scripts:ro" "$IMAGE" \
       bash -c "source /opt/ros/noetic/setup.bash && python3 /scripts/plot_scans.py /results/${SESSION}"

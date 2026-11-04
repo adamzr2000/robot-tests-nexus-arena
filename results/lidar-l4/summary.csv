@@ -1,0 +1,10 @@
+﻿test,setup,runs,zone_points_mean,zone_points_mean_sd,detection_rate,detection_rate_sd,range_median_m,range_median_m_sd,range_std_mm,range_std_mm_sd,beam_std_mm,beam_std_mm_sd,outlier_fraction,outlier_fraction_sd,valid_fraction,valid_fraction_sd
+L1,"lidar floor, no box",0,,,,,,,,,,,,,,
+L2,"lidar floor, box",0,,,,,,,,,,,,,,
+L3,"lidar raised, box",0,,,,,,,,,,,,,,
+L4a,"lidar on its side, bare floor",0,,,,,,,,,,,,,,
+L4b,"lidar on its side, cardboard sheet",0,,,,,,,,,,,,,,
+L5a,"lidar tilted down, bare floor",0,,,,,,,,,,,,,,
+L5b,"lidar tilted down, cardboard sheet",0,,,,,,,,,,,,,,
+L6a,"lidar flat on the floor, box at 1 m, bare floor",0,,,,,,,,,,,,,,
+L6b,"lidar flat on the floor, box at 1 m, cardboard sheet between",0,,,,,,,,,,,,,,

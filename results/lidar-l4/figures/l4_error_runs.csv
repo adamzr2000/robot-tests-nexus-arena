@@ -1,0 +1,11 @@
+test,trial_id,surface,ground_truth_mm,readings,lidar_mean_mm,error_mean_mm,error_std_mm
+L4a,L4a_floor_d0.40_r1_134246,bare floor,400.0,5601,396.22,-3.78,3.0
+L4a,L4a_floor_d0.40_r2_134348,bare floor,400.0,5602,396.22,-3.78,3.08
+L4a,L4a_floor_d0.40_r3_134440,bare floor,400.0,5615,396.22,-3.78,3.16
+L4a,L4a_floor_d0.40_r4_134526,bare floor,400.0,5631,396.11,-3.89,3.3
+L4a,L4a_floor_d0.40_r5_134618,bare floor,400.0,5618,395.87,-4.13,3.55
+L4b,L4b_card_d0.40_r1_134842,cardboard,393.0,5589,388.64,-4.36,0.48
+L4b,L4b_card_d0.40_r2_134944,cardboard,393.0,5567,388.73,-4.27,0.44
+L4b,L4b_card_d0.40_r3_135059,cardboard,393.0,5605,387.65,-5.35,0.48
+L4b,L4b_card_d0.40_r4_135156,cardboard,393.0,5611,387.24,-5.76,0.43
+L4b,L4b_card_d0.40_r5_135337,cardboard,393.0,5619,387.02,-5.98,0.17

@@ -1,0 +1,11 @@
+﻿trial_id,test,setup,repeat,status,override_status,observations,notes
+L4a_floor_d0.40_r1_134246,L4a,"lidar on its side, bare floor",1,DONE,,,
+L4a_floor_d0.40_r2_134348,L4a,"lidar on its side, bare floor",2,DONE,,,
+L4a_floor_d0.40_r3_134440,L4a,"lidar on its side, bare floor",3,DONE,,,
+L4a_floor_d0.40_r4_134526,L4a,"lidar on its side, bare floor",4,DONE,,,
+L4a_floor_d0.40_r5_134618,L4a,"lidar on its side, bare floor",5,DONE,,,
+L4b_card_d0.40_r1_134842,L4b,"lidar on its side, cardboard sheet",1,DONE,,,"ground_truth_mm corrected 397 -> 393 after the run (entered wrong; sheet 7 mm, 400 - 7; operator, 2026-11-04)"
+L4b_card_d0.40_r2_134944,L4b,"lidar on its side, cardboard sheet",2,DONE,,,"ground_truth_mm corrected 397 -> 393 after the run (entered wrong; sheet 7 mm, 400 - 7; operator, 2026-11-04)"
+L4b_card_d0.40_r3_135059,L4b,"lidar on its side, cardboard sheet",3,DONE,,,"ground_truth_mm corrected 397 -> 393 after the run (entered wrong; sheet 7 mm, 400 - 7; operator, 2026-11-04)"
+L4b_card_d0.40_r4_135156,L4b,"lidar on its side, cardboard sheet",4,DONE,,,"ground_truth_mm corrected 397 -> 393 after the run (entered wrong; sheet 7 mm, 400 - 7; operator, 2026-11-04)"
+L4b_card_d0.40_r5_135337,L4b,"lidar on its side, cardboard sheet",5,DONE,,,"ground_truth_mm corrected 397 -> 393 after the run (entered wrong; sheet 7 mm, 400 - 7; operator, 2026-11-04)"

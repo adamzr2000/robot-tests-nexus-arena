@@ -12,6 +12,9 @@
   l4_surface.png      per surface test (L4/L5/L6, once its a and b runs exist): distance, noise and
   l5_surface.png      returns of each beam, bare floor (a) vs cardboard sheet (b)
   l6_surface.png
+  l4_error.csv        L4 with a ground truth: error = lidar reading - hand-measured distance, mean and std,
+                      one row per surface (all runs together); l4_error_runs.csv: the same per run
+  l4_error.png        all errors (histogram) and the mean +- std of every run
 
 Only DONE runs are used (not ABORTED/FAILED, nor marked INVALID in manual.csv) with the
 same settings as the campaign.
@@ -82,7 +85,8 @@ def select_runs(session):
     trials = [json.load(open(p)) for p in sorted(glob.glob(os.path.join(session, "*", "trial.json")))]
     done = [t for t in trials if ((manual.get(t["id"], {}).get("override_status") or "").strip().upper()
                                   or t.get("status")) == "DONE"]
-    key = lambda t: json.dumps({k: v for k, v in t["params"].items() if k not in ("duration", "delay")}, sort_keys=True)
+    key = lambda t: json.dumps({k: v for k, v in t["params"].items() if k not in ("duration", "delay", "ground_truth_mm")},
+                               sort_keys=True)  # each L4 run keeps its own hand-measured ground truth
     campaign = {test: Counter(key(t) for t in done if t["test"] == test).most_common(1)[0][0]
                 for test in {t["test"] for t in done}}
     used = {test: [] for test in NAMES}
@@ -311,6 +315,78 @@ def surface_summary(used, campaign, out_png, out_csv):
         w.writerows(rows)
 
 
+def error_numbers(readings_m, truths_mm):
+    """readings (m) and the ground truth (mm) of each; error = reading - ground truth."""
+    r = 1000 * np.asarray(readings_m)
+    err = r - np.asarray(truths_mm)
+    return {"readings": len(r), "lidar_mean_mm": round(float(r.mean()), 2),
+            "error_mean_mm": round(float(err.mean()), 2), "error_std_mm": round(float(err.std()), 2)}
+
+
+def l4_error(session, used, out_csv, out_png):
+    """Every reading of the centre beams (box_angle +- center_half_angle) minus the run's ground_truth_mm."""
+    rows, pooled = [], {}
+    for test in ("L4a", "L4b"):
+        label = "bare floor" if test == "L4a" else "cardboard"
+        pool = pooled[test] = {"r": [], "gt": [], "runs": 0, "truths": set()}
+        for d in used[test]:
+            p = json.load(open(os.path.join(d, "trial.json")))["params"]
+            if not p.get("ground_truth_mm"):
+                continue
+            T, beams = centre_beams(d, p)
+            r = np.concatenate([v for _, v, _ in beams])
+            gt = p["ground_truth_mm"]
+            rows.append({"test": test, "trial_id": os.path.basename(d), "surface": label, "ground_truth_mm": gt,
+                         **error_numbers(r, np.full(len(r), gt))})
+            pool["r"].append(r); pool["gt"].append(np.full(len(r), gt))
+            pool["runs"] += 1; pool["truths"].add(gt)
+        if pool["runs"]:
+            gt = pool["truths"].pop() if len(pool["truths"]) == 1 else "per run"
+            rows.append({"test": test, "trial_id": f"ALL ({pool['runs']} runs)", "surface": label, "ground_truth_mm": gt,
+                         **error_numbers(np.concatenate(pool["r"]), np.concatenate(pool["gt"]))})
+    if not rows:
+        return False
+    summary = [{k: v for k, v in r.items() if k not in ("test", "trial_id")} for r in rows if r["trial_id"].startswith("ALL")]
+    for path, table in ((out_csv, summary), (out_csv.replace(".csv", "_runs.csv"), [r for r in rows if not r["trial_id"].startswith("ALL")])):
+        with open(path, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=list(table[0].keys()), lineterminator="\n")
+            w.writeheader()
+            w.writerows(table)
+    fig, (a0, a1) = plt.subplots(1, 2, figsize=(12, 4.2))
+    for i, test in enumerate(t for t in ("L4a", "L4b") if pooled[t]["runs"]):
+        pool, c = pooled[test], COLOURS[test]
+        err = 1000 * np.concatenate(pool["r"]) - np.concatenate(pool["gt"])
+        a0.hist(err, bins=np.arange(np.floor(err.min()) - 0.5, np.ceil(err.max()) + 1.5, 1), color=c, alpha=0.55,
+                label=f"{label_of(test)}: mean {err.mean():+.1f} mm, std {err.std():.1f} mm")
+        runs = [r for r in rows if r["test"] == test and not r["trial_id"].startswith("ALL")]
+        x = np.arange(1, len(runs) + 1) + (0.1 if test == "L4b" else -0.1)
+        a1.errorbar(x, [r["error_mean_mm"] for r in runs], yerr=[r["error_std_mm"] for r in runs], fmt="o",
+                    capsize=4, color=c, label=label_of(test))
+    a0.axvline(0, color="black", lw=0.8)
+    a0.set_yscale("log")
+    a0.set_xlabel("error = lidar reading - ground truth (mm)")
+    a0.set_ylabel("number of readings (log)")
+    a0.set_title("All readings of the centre beams, all runs", fontsize=10)
+    a1.axhline(0, color="black", lw=0.8)
+    a1.set_xlabel("run")
+    a1.set_ylabel("error (mm): mean +- std")
+    a1.set_title("Error of every run", fontsize=10)
+    a1.set_xticks(range(1, 1 + max(len([r for r in rows if r["test"] == t]) - 1 for t in ("L4a", "L4b")
+                                   if pooled[t]["runs"])))
+    for ax in (a0, a1):
+        ax.grid(alpha=0.3)
+        ax.legend(fontsize=8)
+    fig.suptitle("L4: lidar straight down, distance compared with the hand-measured ground truth", fontsize=11)
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    fig.savefig(out_png, dpi=130)
+    plt.close(fig)
+    return True
+
+
+def label_of(test):
+    return "bare floor" if test.endswith("a") else "cardboard"
+
+
 def boxes(ax, x0, x1, top):
     ax.add_patch(Rectangle((x0, 0), x1 - x0, top, facecolor="#e9c46a", edgecolor="#8d6e2f"))
     ax.text((x0 + x1) / 2, top / 2, "boxes", ha="center", va="center", fontsize=8)
@@ -440,6 +516,8 @@ def main():
     if any(used[q + "a"] and used[q + "b"] for q in ("L4", "L5")):
         surface_summary(used, campaign, os.path.join(out, "surface_summary.png"), os.path.join(out, "surface_analysis.csv"))
         made += ["surface_summary.png", "surface_analysis.csv"]
+    if l4_error(session, used, os.path.join(out, "l4_error.csv"), os.path.join(out, "l4_error.png")):
+        made += ["l4_error.csv", "l4_error_runs.csv", "l4_error.png"]
     for pair in PAIRS:
         if used[pair + "a"] and used[pair + "b"]:
             name = f"{pair.lower()}_surface.png"

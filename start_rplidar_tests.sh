@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SESSION_NAME="lidar-benchmark"
+SESSION_NAME="lidar-l4"
 
 usage() {
   echo "Usage: $0 [--session NAME]"
-  echo "  --session  Results folder under results/ (default: lidar-benchmark, the lidar campaign;"
-  echo "             use another name only for data that must stay apart)"
+  echo "  --session  Results folder under results/ (default: lidar-l4, the L4 ground-truth runs;"
+  echo "             lidar-benchmark = the earlier L1-L5 campaign)"
   exit 1
 }
 

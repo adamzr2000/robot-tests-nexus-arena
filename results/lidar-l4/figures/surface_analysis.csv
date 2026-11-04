@@ -1,0 +1,13 @@
+test,trial_id,surface,readings,distance_mm,noise_mm,spread_99_mm,min_dev_mm,max_dev_mm,off_1cm_pct,off_1cm_far_pct,beam_returns_pct
+L4a,L4a_floor_d0.40_r1_134246,bare floor,5601,398.0,0.64,2.0,-4.0,3.0,0.0,,99.5
+L4a,L4a_floor_d0.40_r2_134348,bare floor,5602,397.5,0.66,2.0,-4.0,4.0,0.0,,99.8
+L4a,L4a_floor_d0.40_r3_134440,bare floor,5615,397.5,0.65,3.0,-3.0,3.0,0.0,,99.8
+L4a,L4a_floor_d0.40_r4_134526,bare floor,5631,397.5,0.72,3.0,-4.0,4.0,0.0,,99.8
+L4a,L4a_floor_d0.40_r5_134618,bare floor,5618,398.0,0.76,3.0,-4.0,5.0,0.0,,99.6
+L4a,ALL (5 runs),bare floor,28067,398.0,0.69,3.0,-4.0,5.0,0.0,,99.7
+L4b,L4b_card_d0.40_r1_134842,cardboard,5589,389.0,0.48,1.0,-1.0,0.0,0.0,,98.8
+L4b,L4b_card_d0.40_r2_134944,cardboard,5567,389.0,0.43,1.0,-1.0,0.0,0.0,,98.9
+L4b,L4b_card_d0.40_r3_135059,cardboard,5605,388.0,0.4,1.0,-1.0,1.0,0.0,,99.1
+L4b,L4b_card_d0.40_r4_135156,cardboard,5611,387.0,0.33,1.0,-1.0,1.0,0.0,,99.0
+L4b,L4b_card_d0.40_r5_135337,cardboard,5619,387.0,0.12,1.0,-1.0,1.0,0.0,,99.1
+L4b,ALL (5 runs),cardboard,27991,388.0,0.35,1.0,-1.0,1.0,0.0,,99.0

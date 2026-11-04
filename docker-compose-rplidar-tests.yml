@@ -1,0 +1,44 @@
+# Lidar floor tests (L1-L3, RPLiDAR A3 on USB, ROS 1): the ROS master, the
+# unchanged lidar driver (dockerfiles/rplidar) and the test API (:8091) that
+# records /scan. Use ./start_rplidar_tests.sh / ./stop_rplidar_tests.sh.
+name: rplidar-tests
+
+services:
+  ros-master:
+    image: adamzr2000/ros-master:latest
+    container_name: ros-master
+    network_mode: host
+    environment:
+      - ROS_MASTER_URI=http://127.0.0.1:11311
+      - ROS_IP=127.0.0.1
+    restart: unless-stopped
+
+  rplidar-lidar:
+    image: rplidar-lidar:latest
+    container_name: rplidar-lidar
+    network_mode: host
+    environment:
+      - ROS_MASTER_URI=http://127.0.0.1:11311
+      - ROS_IP=127.0.0.1
+      - RF2O_LASER_ODOMETRY=false
+    devices:
+      - /dev/rplidar:/dev/rplidar
+    depends_on: [ros-master]
+    restart: unless-stopped
+
+  rplidar-tests:
+    image: rplidar-tests:latest
+    container_name: rplidar-tests
+    init: true
+    network_mode: host
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      - ROS_MASTER_URI=http://127.0.0.1:11311
+      - ROS_IP=127.0.0.1
+      - ROS_HOME=/tmp/ros
+      - SESSION=${SESSION:-}
+    volumes:
+      - ./dockerfiles/rplidar-tests/scripts:/home/robot/scripts:rw
+      - ./results:/home/robot/results:rw
+    depends_on: [ros-master]
+    restart: unless-stopped

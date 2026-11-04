@@ -1,0 +1,62 @@
+{
+ "id": "L5b_card_d1.00_r3_085451",
+ "test": "L5b",
+ "setup": {
+  "name": "card",
+  "setup": "lidar tilted down, cardboard sheet",
+  "target": true,
+  "pair": "L5",
+  "sheet": true,
+  "defaults": {
+   "distance": 1.0
+  }
+ },
+ "repeat": 3,
+ "status": "DONE",
+ "reason": null,
+ "started": "2026-11-04T08:54:51+0000",
+ "params": {
+  "duration": 30.0,
+  "delay": 5.0,
+  "distance": 1.0,
+  "box_angle": 180.0,
+  "zone_half_angle": 10.0,
+  "zone_margin": 0.5,
+  "center_half_angle": 2.0
+ },
+ "overrides": {},
+ "notes": "",
+ "code_version": "da5b39d8b5f8",
+ "lidar": {
+  "driver_params": {
+   "angle_compensate": true,
+   "frame_id": "laser_link",
+   "serial_port": "/dev/rplidar",
+   "serial_baudrate": 256000,
+   "scan_mode": "Sensitivity",
+   "inverted": false
+  },
+  "frame_id": "laser_link",
+  "points_per_scan": 1440,
+  "angle_min_deg": -179.0,
+  "angle_increment_deg": 0.24948,
+  "range_min_m": 0.15000000596046448,
+  "range_max_m": 25.0
+ },
+ "metrics": {
+  "duration_s": 29.944,
+  "scans": 393,
+  "scan_hz": 13.091,
+  "max_gap_s": 0.086,
+  "valid_fraction": 0.4716,
+  "zone_points_mean": 77.91,
+  "zone_min_m": 1.008,
+  "detection_rate": 1.0,
+  "range_median_m": 1.01,
+  "range_std_mm": 0.0,
+  "range_min_m": 1.01,
+  "range_max_m": 1.01,
+  "beam_std_mm": 0.44,
+  "outlier_fraction": 0.0
+ }
+}

@@ -1,0 +1,55 @@
+{
+ "id": "L2_box_d2.00_r4_140744",
+ "test": "L2",
+ "setup": {
+  "name": "box",
+  "lidar": "floor",
+  "box": true
+ },
+ "repeat": 4,
+ "status": "DONE",
+ "reason": null,
+ "started": "2026-11-03T14:07:44+0000",
+ "params": {
+  "duration": 30.0,
+  "delay": 5.0,
+  "distance": 2.0,
+  "box_angle": 180.0,
+  "zone_half_angle": 10.0,
+  "zone_margin": 0.5,
+  "center_half_angle": 2.0
+ },
+ "overrides": {},
+ "notes": "",
+ "code_version": "d0fe9530a9b3",
+ "lidar": {
+  "driver_params": {
+   "angle_compensate": true,
+   "frame_id": "laser_link",
+   "serial_port": "/dev/rplidar",
+   "serial_baudrate": 256000,
+   "scan_mode": "Sensitivity",
+   "inverted": false
+  },
+  "frame_id": "laser_link",
+  "points_per_scan": 1440,
+  "angle_min_deg": -179.0,
+  "angle_increment_deg": 0.24948,
+  "range_min_m": 0.15000000596046448,
+  "range_max_m": 25.0
+ },
+ "metrics": {
+  "duration_s": 29.963,
+  "scans": 397,
+  "scan_hz": 13.216,
+  "max_gap_s": 0.082,
+  "valid_fraction": 0.1319,
+  "zone_points_mean": 77.88,
+  "zone_min_m": 1.998,
+  "detection_rate": 1.0,
+  "range_median_m": 2.015,
+  "range_std_mm": 1.5,
+  "range_min_m": 2.01,
+  "range_max_m": 2.019
+ }
+}

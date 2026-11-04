@@ -1,0 +1,554 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Created with matplotlib (https://matplotlib.org/) -->
+<svg height="540pt" version="1.1" viewBox="0 0 648 540" width="648pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <style type="text/css">
+*{stroke-linecap:butt;stroke-linejoin:round;}
+  </style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 540 
+L 648 540 
+L 648 0 
+L 0 0 
+z
+" style="fill:#ffffff;"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 54.2 181.68 
+L 634.005 181.68 
+L 634.005 51.72 
+L 54.2 51.72 
+z
+" style="fill:#ffffff;"/>
+   </g>
+   <g id="patch_3">
+    <path clip-path="url(#p86db8badda)" d="M 54.2 155.688 
+L 54.2 143.456471 
+L 634.005 143.456471 
+L 634.005 155.688 
+z
+" style="fill:#c8b89a;stroke:#c8b89a;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_4">
+    <path clip-path="url(#p86db8badda)" d="M 259.228917 143.456471 
+L 268.604487 143.456471 
+L 268.604487 137.187812 
+L 259.228917 137.187812 
+z
+" style="stroke:#000000;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_5">
+    <path clip-path="url(#p86db8badda)" d="M 510.642234 143.456471 
+L 553.819202 143.456471 
+L 553.819202 74.654118 
+L 510.642234 74.654118 
+z
+" style="fill:none;stroke:#8d6e2f;stroke-dasharray:1,1.65;stroke-dashoffset:0;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_6">
+    <path clip-path="url(#p86db8badda)" d="M 85.040691 143.456471 
+L 115.881383 143.456471 
+L 115.881383 138.869647 
+L 85.040691 138.869647 
+z
+" style="fill:#495057;stroke:#495057;stroke-linejoin:miter;"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path d="M 0 0 
+L 0 3.5 
+" id="m868cabb589" style="stroke:#000000;stroke-width:0.8;"/>
+      </defs>
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="140.553936" xlink:href="#m868cabb589" y="181.68"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="263.916702" xlink:href="#m868cabb589" y="181.68"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="387.279468" xlink:href="#m868cabb589" y="181.68"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="510.642234" xlink:href="#m868cabb589" y="181.68"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="634.005" xlink:href="#m868cabb589" y="181.68"/>
+      </g>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_6">
+      <defs>
+       <path d="M 0 0 
+L -3.5 0 
+" id="mf034475bb0" style="stroke:#000000;stroke-width:0.8;"/>
+      </defs>
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="143.456471"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 147.255689)" x="47.2" y="147.255689">0.00</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_7">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="105.232941"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 109.03216)" x="47.2" y="109.03216">0.25</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_8">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="67.009412"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 70.808631)" x="47.2" y="70.808631">0.50</text>
+     </g>
+    </g>
+    <g id="text_4">
+     <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-90, 18.854688, 116.7)" x="18.854688" y="116.7">height (m)</text>
+    </g>
+   </g>
+   <g id="line2d_9">
+    <path clip-path="url(#p86db8badda)" d="M 66.536277 138.869647 
+L 634.005 138.869647 
+" style="fill:none;stroke:#ff0000;stroke-dasharray:3.7,1.6;stroke-dashoffset:0;"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 54.2 181.68 
+L 54.2 51.72 
+" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;stroke-width:0.8;"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 54.2 181.68 
+L 634.005 181.68 
+" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;stroke-width:0.8;"/>
+   </g>
+   <g id="text_5">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 621.668723, 153.308676)" x="621.668723" y="153.308676">arena surface</text>
+   </g>
+   <g id="text_6">
+    <text style="fill:#ff0000;font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:start;" transform="rotate(-0, 294.757394, 134.282824)" x="294.757394" y="134.282824">laser plane, ~3 cm above the ground</text>
+   </g>
+   <g id="text_7">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 532.230718, 71.596235)" x="532.230718" y="71.596235">no box (zone empty)</text>
+   </g>
+   <g id="patch_9">
+    <path d="M 266.810202 163.332706 
+Q 387.280098 163.332706 507.749994 163.332706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+    <path d="M 270.810202 165.332706 
+L 266.810202 163.332706 
+L 270.810202 161.332706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+    <path d="M 503.749994 161.332706 
+L 507.749994 163.332706 
+L 503.749994 165.332706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+   </g>
+   <g id="text_8">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 387.279468, 174.035294)" x="387.279468" y="174.035294">2.0 m</text>
+   </g>
+   <g id="text_9">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 99.844223, 123.580235)" x="99.844223" y="123.580235">you + laptop</text>
+   </g>
+   <g id="text_10">
+    <text style="fill:#7a7a7a;font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:start;" transform="rotate(-0, 54.2, 45.72)" x="54.2" y="45.72">L1: lidar on the floor, no box</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_10">
+    <path d="M 54.2 339.86 
+L 634.005 339.86 
+L 634.005 209.9 
+L 54.2 209.9 
+z
+" style="fill:#ffffff;"/>
+   </g>
+   <g id="patch_11">
+    <path clip-path="url(#p832229bb2a)" d="M 54.2 313.868 
+L 54.2 301.636471 
+L 634.005 301.636471 
+L 634.005 313.868 
+z
+" style="fill:#c8b89a;stroke:#c8b89a;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_12">
+    <path clip-path="url(#p832229bb2a)" d="M 259.228917 301.636471 
+L 268.604487 301.636471 
+L 268.604487 295.367812 
+L 259.228917 295.367812 
+z
+" style="stroke:#000000;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_13">
+    <path clip-path="url(#p832229bb2a)" d="M 510.642234 301.636471 
+L 553.819202 301.636471 
+L 553.819202 232.834118 
+L 510.642234 232.834118 
+z
+" style="fill:#e9c46a;stroke:#8d6e2f;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_14">
+    <path clip-path="url(#p832229bb2a)" d="M 85.040691 301.636471 
+L 115.881383 301.636471 
+L 115.881383 297.049647 
+L 85.040691 297.049647 
+z
+" style="fill:#495057;stroke:#495057;stroke-linejoin:miter;"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_6">
+     <g id="line2d_10">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="140.553936" xlink:href="#m868cabb589" y="339.86"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_11">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="263.916702" xlink:href="#m868cabb589" y="339.86"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_12">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="387.279468" xlink:href="#m868cabb589" y="339.86"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_13">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="510.642234" xlink:href="#m868cabb589" y="339.86"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_10">
+     <g id="line2d_14">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="634.005" xlink:href="#m868cabb589" y="339.86"/>
+      </g>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_4">
+     <g id="line2d_15">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="301.636471"/>
+      </g>
+     </g>
+     <g id="text_11">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 305.435689)" x="47.2" y="305.435689">0.00</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_16">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="263.412941"/>
+      </g>
+     </g>
+     <g id="text_12">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 267.21216)" x="47.2" y="267.21216">0.25</text>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_17">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="225.189412"/>
+      </g>
+     </g>
+     <g id="text_13">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 228.988631)" x="47.2" y="228.988631">0.50</text>
+     </g>
+    </g>
+    <g id="text_14">
+     <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-90, 18.854688, 274.88)" x="18.854688" y="274.88">height (m)</text>
+    </g>
+   </g>
+   <g id="line2d_18">
+    <path clip-path="url(#p832229bb2a)" d="M 66.536277 297.049647 
+L 634.005 297.049647 
+" style="fill:none;stroke:#ff0000;stroke-dasharray:3.7,1.6;stroke-dashoffset:0;"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 54.2 339.86 
+L 54.2 209.9 
+" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;stroke-width:0.8;"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 54.2 339.86 
+L 634.005 339.86 
+" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;stroke-width:0.8;"/>
+   </g>
+   <g id="text_15">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 621.668723, 311.488676)" x="621.668723" y="311.488676">arena surface</text>
+   </g>
+   <g id="text_16">
+    <text style="fill:#ff0000;font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:start;" transform="rotate(-0, 294.757394, 292.462824)" x="294.757394" y="292.462824">laser plane, ~3 cm above the ground</text>
+   </g>
+   <g id="text_17">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 532.230718, 229.776235)" x="532.230718" y="229.776235">box</text>
+   </g>
+   <g id="patch_17">
+    <path d="M 266.810202 321.512706 
+Q 387.280098 321.512706 507.749994 321.512706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+    <path d="M 270.810202 323.512706 
+L 266.810202 321.512706 
+L 270.810202 319.512706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+    <path d="M 503.749994 319.512706 
+L 507.749994 321.512706 
+L 503.749994 323.512706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+   </g>
+   <g id="text_18">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 387.279468, 332.215294)" x="387.279468" y="332.215294">2.0 m</text>
+   </g>
+   <g id="text_19">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 99.844223, 281.760235)" x="99.844223" y="281.760235">you + laptop</text>
+   </g>
+   <g id="text_20">
+    <text style="fill:#d9480f;font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:start;" transform="rotate(-0, 54.2, 203.9)" x="54.2" y="203.9">L2: lidar on the floor, box at 2 m</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g id="patch_18">
+    <path d="M 54.2 498.04 
+L 634.005 498.04 
+L 634.005 368.08 
+L 54.2 368.08 
+z
+" style="fill:#ffffff;"/>
+   </g>
+   <g id="patch_19">
+    <path clip-path="url(#p7cd4950150)" d="M 54.2 472.048 
+L 54.2 459.816471 
+L 634.005 459.816471 
+L 634.005 472.048 
+z
+" style="fill:#c8b89a;stroke:#c8b89a;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_20">
+    <path clip-path="url(#p7cd4950150)" d="M 249.11317 459.816471 
+L 278.720234 459.816471 
+L 278.720234 421.592941 
+L 249.11317 421.592941 
+z
+" style="fill:#adb5bd;stroke:#adb5bd;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_21">
+    <path clip-path="url(#p7cd4950150)" d="M 259.228917 421.592941 
+L 268.604487 421.592941 
+L 268.604487 415.324282 
+L 259.228917 415.324282 
+z
+" style="stroke:#000000;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_22">
+    <path clip-path="url(#p7cd4950150)" d="M 510.642234 459.816471 
+L 553.819202 459.816471 
+L 553.819202 391.014118 
+L 510.642234 391.014118 
+z
+" style="fill:#e9c46a;stroke:#8d6e2f;stroke-linejoin:miter;"/>
+   </g>
+   <g id="patch_23">
+    <path clip-path="url(#p7cd4950150)" d="M 85.040691 459.816471 
+L 115.881383 459.816471 
+L 115.881383 455.229647 
+L 85.040691 455.229647 
+z
+" style="fill:#495057;stroke:#495057;stroke-linejoin:miter;"/>
+   </g>
+   <g id="matplotlib.axis_5">
+    <g id="xtick_11">
+     <g id="line2d_19">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="140.553936" xlink:href="#m868cabb589" y="498.04"/>
+      </g>
+     </g>
+     <g id="text_21">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 140.553936, 512.638438)" x="140.553936" y="512.638438">−1</text>
+     </g>
+    </g>
+    <g id="xtick_12">
+     <g id="line2d_20">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="263.916702" xlink:href="#m868cabb589" y="498.04"/>
+      </g>
+     </g>
+     <g id="text_22">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 263.916702, 512.638438)" x="263.916702" y="512.638438">0</text>
+     </g>
+    </g>
+    <g id="xtick_13">
+     <g id="line2d_21">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="387.279468" xlink:href="#m868cabb589" y="498.04"/>
+      </g>
+     </g>
+     <g id="text_23">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 387.279468, 512.638438)" x="387.279468" y="512.638438">1</text>
+     </g>
+    </g>
+    <g id="xtick_14">
+     <g id="line2d_22">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="510.642234" xlink:href="#m868cabb589" y="498.04"/>
+      </g>
+     </g>
+     <g id="text_24">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 510.642234, 512.638438)" x="510.642234" y="512.638438">2</text>
+     </g>
+    </g>
+    <g id="xtick_15">
+     <g id="line2d_23">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="634.005" xlink:href="#m868cabb589" y="498.04"/>
+      </g>
+     </g>
+     <g id="text_25">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 634.005, 512.638438)" x="634.005" y="512.638438">3</text>
+     </g>
+    </g>
+    <g id="text_26">
+     <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 344.1025, 526.316563)" x="344.1025" y="526.316563">distance from the lidar (m)   (side view, not to scale; box size illustrative)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_6">
+    <g id="ytick_7">
+     <g id="line2d_24">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="459.816471"/>
+      </g>
+     </g>
+     <g id="text_27">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 463.615689)" x="47.2" y="463.615689">0.00</text>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_25">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="421.592941"/>
+      </g>
+     </g>
+     <g id="text_28">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 425.39216)" x="47.2" y="425.39216">0.25</text>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_26">
+      <g>
+       <use style="stroke:#000000;stroke-width:0.8;" x="54.2" xlink:href="#mf034475bb0" y="383.369412"/>
+      </g>
+     </g>
+     <g id="text_29">
+      <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 47.2, 387.168631)" x="47.2" y="387.168631">0.50</text>
+     </g>
+    </g>
+    <g id="text_30">
+     <text style="font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-90, 18.854688, 433.06)" x="18.854688" y="433.06">height (m)</text>
+    </g>
+   </g>
+   <g id="line2d_27">
+    <path clip-path="url(#p7cd4950150)" d="M 66.536277 417.006118 
+L 634.005 417.006118 
+" style="fill:none;stroke:#ff0000;stroke-dasharray:3.7,1.6;stroke-dashoffset:0;"/>
+   </g>
+   <g id="patch_24">
+    <path d="M 54.2 498.04 
+L 54.2 368.08 
+" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;stroke-width:0.8;"/>
+   </g>
+   <g id="patch_25">
+    <path d="M 54.2 498.04 
+L 634.005 498.04 
+" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;stroke-width:0.8;"/>
+   </g>
+   <g id="text_31">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:end;" transform="rotate(-0, 621.668723, 469.668676)" x="621.668723" y="469.668676">arena surface</text>
+   </g>
+   <g id="text_32">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:start;" transform="rotate(-0, 282.421117, 442.912206)" x="282.421117" y="442.912206">stand 25 cm</text>
+   </g>
+   <g id="text_33">
+    <text style="fill:#ff0000;font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:start;" transform="rotate(-0, 294.757394, 412.419294)" x="294.757394" y="412.419294">laser plane, ~28 cm above the ground</text>
+   </g>
+   <g id="text_34">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 532.230718, 387.956235)" x="532.230718" y="387.956235">box</text>
+   </g>
+   <g id="patch_26">
+    <path d="M 266.810202 479.692706 
+Q 387.280098 479.692706 507.749994 479.692706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+    <path d="M 270.810202 481.692706 
+L 266.810202 479.692706 
+L 270.810202 477.692706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+    <path d="M 503.749994 477.692706 
+L 507.749994 479.692706 
+L 503.749994 481.692706 
+" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-width:0.8;"/>
+   </g>
+   <g id="text_35">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 387.279468, 490.395294)" x="387.279468" y="490.395294">2.0 m</text>
+   </g>
+   <g id="text_36">
+    <text style="font-family:DejaVu Sans;font-size:8px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 99.844223, 439.940235)" x="99.844223" y="439.940235">you + laptop</text>
+   </g>
+   <g id="text_37">
+    <text style="fill:#1c7ed6;font-family:DejaVu Sans;font-size:10px;font-style:normal;font-weight:normal;text-anchor:start;" transform="rotate(-0, 54.2, 362.08)" x="54.2" y="362.08">L3: lidar raised 25 cm, box at 2 m</text>
+   </g>
+  </g>
+  <g id="text_38">
+   <text style="font-family:DejaVu Sans;font-size:11px;font-style:normal;font-weight:normal;text-anchor:middle;" transform="rotate(-0, 324, 19.158281)" x="324" y="19.158281">Lidar floor tests: only one thing changes from one experiment to the next</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p86db8badda">
+   <rect height="129.96" width="579.805" x="54.2" y="51.72"/>
+  </clipPath>
+  <clipPath id="p832229bb2a">
+   <rect height="129.96" width="579.805" x="54.2" y="209.9"/>
+  </clipPath>
+  <clipPath id="p7cd4950150">
+   <rect height="129.96" width="579.805" x="54.2" y="368.08"/>
+  </clipPath>
+ </defs>
+</svg>

@@ -1,0 +1,55 @@
+{
+ "id": "L3_raised_d2.00_r3_141407",
+ "test": "L3",
+ "setup": {
+  "name": "raised",
+  "lidar": "raised",
+  "box": true
+ },
+ "repeat": 3,
+ "status": "DONE",
+ "reason": null,
+ "started": "2026-11-03T14:14:07+0000",
+ "params": {
+  "duration": 30.0,
+  "delay": 5.0,
+  "distance": 2.0,
+  "box_angle": 180.0,
+  "zone_half_angle": 10.0,
+  "zone_margin": 0.5,
+  "center_half_angle": 2.0
+ },
+ "overrides": {},
+ "notes": "",
+ "code_version": "d0fe9530a9b3",
+ "lidar": {
+  "driver_params": {
+   "angle_compensate": true,
+   "frame_id": "laser_link",
+   "serial_port": "/dev/rplidar",
+   "serial_baudrate": 256000,
+   "scan_mode": "Sensitivity",
+   "inverted": false
+  },
+  "frame_id": "laser_link",
+  "points_per_scan": 1440,
+  "angle_min_deg": -179.0,
+  "angle_increment_deg": 0.24948,
+  "range_min_m": 0.15000000596046448,
+  "range_max_m": 25.0
+ },
+ "metrics": {
+  "duration_s": 29.987,
+  "scans": 398,
+  "scan_hz": 13.239,
+  "max_gap_s": 0.087,
+  "valid_fraction": 0.271,
+  "zone_points_mean": 77.88,
+  "zone_min_m": 1.996,
+  "detection_rate": 1.0,
+  "range_median_m": 2.032,
+  "range_std_mm": 1.05,
+  "range_min_m": 2.028,
+  "range_max_m": 2.035
+ }
+}

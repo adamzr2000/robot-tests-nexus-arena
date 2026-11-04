@@ -1,0 +1,7 @@
+FROM ros:noetic-ros-base
+
+# Viewer for the lidar tests: RViz (live /scan or a recorded bag) and matplotlib (figures).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-noetic-rviz \
+    python3-matplotlib \
+ && rm -rf /var/lib/apt/lists/*
